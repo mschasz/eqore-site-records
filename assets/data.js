@@ -725,7 +725,42 @@ EQ.applyCustomerDocs = function (s) {
   if (listPeak && Math.abs(listPeak - pk[1]) > 10) F('info', 'load', `The facility list's ${fmtN(listPeak, 1)} kW peak (15-min interval) is higher than the ${pk[1]} kW billed maximum. Billing may use a different demand interval; size from the interval file.`, `${b.name} · EQORE facility list`);
 
   s.activity.unshift({ t: `${sl.date}T15:00:00`, who: 'Facility contact', text: `Sent existing single-line diagram ${sl.drawing}` }, { t: `${b.date}T14:00:00`, who: 'Facility contact', text: `Sent ${b.period} Eversource bill (${b.rate})` });
+
+  // 15-minute interval data (docs/<site>/interval_2025.js, generated from the customer's CSV)
+  const series = (window.EQ_INTERVAL || {})[s.id];
+  if (!series || !window.EQ_rowsFromSeries) return;
+  const rows = window.EQ_rowsFromSeries(series), iv = window.EQ_summarizeInterval(rows, series.file, series.minutes);
+  s.interval = iv;
+  const ivFile = { key: 'doc-interval-2025', name: series.file, type: 'csv', date: '2025-12-31', size: '1.2 MB', confLabel: 'Customer interval data', img: null, pdf: null, csv: series.csv };
+  const ratePerKw = demandCost / oct; // demand charges per kW of billed max, Oct 2026 bill
+  const sysKwh = (s.system && s.system.kwh) || 400;
+  const shave = window.EQ_peakShave(rows, { kw: sysKw, kwh: sysKwh, dod: 0.9, ratePerKwMonth: ratePerKw });
+  const full = window.EQ_peakShave(rows, { kw: sysKw, kwh: 100000, dod: 1 });
+  const needKwh = Math.max(...full.months.map((x) => x.energyUsed)) / 0.9;
+  s.shave = Object.assign(shave, { ratePerKw, rateSrc: `${b.name}: $${fmtN(demandCost)} demand charges / ${oct} kW billed max`, sysKw, sysKwh, needKwh, file: series.file });
+  const hot = rows.reduce((a, r) => (r.kw > a.kw ? r : a));
+  const warm = iv.monthly.filter((x) => /-0[6-9]|-10/.test(x.m)).map((x) => x.kw), cool = iv.monthly.filter((x) => !/-0[6-9]|-10/.test(x.m)).map((x) => x.kw);
+  s.files = s.files.filter((f) => f.key !== ivFile.key);
+  s.files.unshift({ id: `${s.id}:${ivFile.key}`, key: ivFile.key, name: ivFile.name, type: 'csv', cat: 'Customer upload', uploader: { name: 'Facility contact', role: 'Customer' }, date: ivFile.date, origin: 'Customer-provided', conf: 'high', confLabel: ivFile.confLabel, size: ivFile.size, preview: 'interval', csv: ivFile.csv,
+    extracted: [['Period', `${iv.start} to ${iv.end}`], ['Intervals', `${fmtN(iv.count)} × ${iv.minutes} min (clock time; DST shifts kept)`], ['Annual energy', `${fmtN(iv.kwh)} kWh`], ['Peak', `${fmtN(iv.peakKw, 1)} kW, ${iv.peakAt} (${hot.tF} °F)`], ['Average load', `${fmtN(iv.avgKw, 1)} kW`], ['Load factor', `${fmtN(iv.loadFactor * 100)}%`], ['Columns', 'timestamp, demand_kW, energy_kWh, outdoor_temp_F']], dps: ['interval', 'peakDemand'] });
+  set('interval', `${fmtN(iv.count)} intervals, ${iv.minutes}-min, ${iv.start} – ${iv.end} · ${fmtN(iv.kwh / 1e6, 2)} GWh`, ivFile, { signoff: false });
+  set('peakDemand', `${fmtN(iv.peakKw, 1)} kW · ${iv.peakAt} · load factor ${fmtN(iv.loadFactor * 100)}%`, ivFile, { signoff: false });
+  s.peakText = `${fmtN(iv.peakKw, 1)} kW (15-min, ${iv.peakAt.split(',')[0]})`;
+  s.areas.load = ['good', `Measured peak ${fmtN(iv.peakKw, 1)} kW; load factor ${fmtN(iv.loadFactor * 100)}%; demand ${fmtN((demandCost / b.total) * 100)}% of bill`, series.file];
+  s.summary = `${fac0(s)} Interval data (2025) shows a ${fmtN(iv.peakKw, 1)} kW peak on ${iv.peakAt.split(',')[0]} at ${hot.tF} °F and a ${fmtN(iv.loadFactor * 100)}% load factor. Modeled on that data, the ${sysKw} kW / ${sysKwh} kWh system cuts monthly peaks by ${fmtN(shave.minReduction)}–${fmtN(shave.maxReduction)} kW, about $${fmtN(Math.round(shave.total / 1000) * 1000)}/yr in demand charges. The customer SLD shows a 200 A spare on the 1,200 A MDP-1 for the battery.`;
+  // Findings from the interval data (the bill-vs-list finding is replaced by the interval one)
+  s.findings = s.findings.filter((f) => !/facility list's .* peak .* higher than the .* billed maximum/.test(f.text));
+  F('good', 'load', `Interval data confirms the peak: ${fmtN(iv.peakKw, 1)} kW on ${iv.peakAt} at ${hot.tF} °F. ${fmtN(iv.kwh / 1e6, 2)} GWh in 2025; average ${fmtN(iv.avgKw)} kW; load factor ${fmtN(iv.loadFactor * 100)}%.`, series.file);
+  F('info', 'load', `Peaks are weather-driven: June–October monthly peaks are ${fmtN(Math.min(...warm))}–${fmtN(Math.max(...warm))} kW vs ${fmtN(Math.min(...cool))}–${fmtN(Math.max(...cool))} kW the rest of the year; ${iv.peakHours.replace('top 1% of intervals mostly at', 'the top 1% of intervals fall mostly at')} on weekdays.`, series.file);
+  F('good', 'load', `Peak-shaving model: the ${sysKw} kW / ${sysKwh} kWh system (${fmtN(shave.usable)} kWh usable) cuts monthly max demand by ${fmtN(shave.minReduction)}–${fmtN(shave.maxReduction)} kW (avg ${fmtN(shave.avgReduction)} kW), about $${fmtN(Math.round(shave.total / 100) * 100)}/yr at $${fmtN(ratePerKw, 2)}/kW-month from the ${b.period} bill.`, series.file);
+  F('info', 'load', `Energy, not power, limits shaving in every month: holding the full ${sysKw} kW cut in the worst month needs about ${fmtN(Math.round(needKwh / 10) * 10)} kWh of nameplate storage (at 90% depth of discharge), vs ${sysKwh} kWh contracted.`, series.file);
+  const billMap = Object.fromEntries(b.demand), ivMap = Object.fromEntries(iv.monthly.map((x) => [x.m, x.kw]));
+  const both = Object.keys(billMap).filter((m) => ivMap[m] != null);
+  if (both.length) F('info', 'load', `Billed max is above the interval peak where they overlap: ${both.map((m) => `${new Date(m + '-15').toLocaleString('en-US', { month: 'short', year: 'numeric' })} ${billMap[m]} vs ${fmtN(ivMap[m])} kW`).join('; ')}. Confirm the CSV covers the billing meter and how Eversource computes billing demand.`, `${b.name} · ${series.file}`);
+  if (listPeak && Math.abs(listPeak - iv.peakKw) > 10) F('info', 'load', `The facility list's ${fmtN(listPeak, 1)} kW peak is not in the interval data (max ${fmtN(iv.peakKw, 1)} kW in 2025). Update the facility list.`, `${series.file} · EQORE facility list`);
+  s.activity.unshift({ t: '2026-11-07T18:00:00', who: 'Facility contact', text: `Sent 15-minute interval data for 2025 (${series.file})` });
 };
+const fac0 = (s) => s.summary.split(' Interval data (2025)')[0].replace(/ The Oct 2026 bill shows.*$/, '').replace(/ against a [\d.,]+ kW peak/, '');
 
 EQ.buildLeadSites = function (existingIds) {
   return EQ.readLeads().filter((l) => !(existingIds || new Set()).has(l.id) && l.geo && l.geo.lat != null).map((lead) => {

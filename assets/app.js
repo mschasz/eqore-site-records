@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'eqore.records.v9';
+  const STORE_KEY = 'eqore.records.v10';
   const S = {
     sites: loadSites(),
     route: { view: 'pipeline', id: null },
@@ -834,10 +834,12 @@
         <div class="relative h-[200px]"><canvas id="bench-chart" role="img" aria-label="Annual grid electricity"></canvas></div>` : `<div class="text-[14px] text-ink">No public energy benchmarking for this address</div><div class="text-[12.5px] text-ink2 mt-1">${s.system ? `Facility list: peak ${fmt((EQ.addrDoc(s).facility || {}).peak_kw)} kW (${esc((EQ.addrDoc(s).facility || {}).peak_basis)}), peak-shave target ${fmt((EQ.addrDoc(s).facility || {}).target_kw)} kW, ${esc(s.system.status)} system ${fmt(s.system.kw)} kW / ${fmt(s.system.kwh)} kWh.` : ''}${iv ? '' : ' Upload 12 months of 15-min interval data to size against measured load.'}</div>`}
         ${iv ? `<div class="text-[14px] text-ink mt-5">Peak day from interval data</div><div class="text-[12px] text-mute mb-2">${esc(iv.file)} · ${fmt(iv.count)} intervals · ${iv.minutes}-min · ${esc(iv.start)} – ${esc(iv.end)}</div>
           <div class="relative h-[200px]"><canvas id="peak-chart" role="img" aria-label="Peak day demand"></canvas></div>
-          <div class="text-[14px] text-ink mt-5 mb-2">Monthly peak demand</div><div class="relative h-[180px]"><canvas id="month-chart" role="img" aria-label="Monthly peak demand"></canvas></div>` : ''}
+          <div class="flex items-baseline justify-between mt-5 mb-2"><div class="text-[14px] text-ink">Monthly peak demand</div>${s.shave ? `<div class="flex gap-4 text-[11.5px] text-ink2"><span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3" style="background:#b3c8e4"></span>Measured</span><span class="flex items-center gap-1.5"><span class="inline-block w-3 h-[2px]" style="background:#06162b"></span>With ${fmt(s.shave.sysKw)} kW / ${fmt(s.shave.sysKwh)} kWh</span></div>` : ''}</div><div class="relative h-[180px]"><canvas id="month-chart" role="img" aria-label="Monthly peak demand"></canvas></div>
+          ${s.shave ? shaveTable(s) : ''}` : ''}
       </div>
       <dl class="lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-x-6 gap-y-4 content-start">
-        ${stat('Latest annual use', latestKwh(s) ? `${fmt(latestKwh(s).kwh)} kWh` : '—', latestKwh(s) ? `${latestKwh(s).year}` : 'Not reported', latestKwh(s) ? `Benchmarking ${latestKwh(s).year}` : null)}
+        ${iv && iv.kwh ? stat('Annual use', `${fmt(iv.kwh)} kWh`, `${esc(iv.start.slice(0, 4))} interval data`) : stat('Latest annual use', latestKwh(s) ? `${fmt(latestKwh(s).kwh)} kWh` : '—', latestKwh(s) ? `${latestKwh(s).year}` : 'Not reported', latestKwh(s) ? `Benchmarking ${latestKwh(s).year}` : null)}
+        ${s.shave ? stat('Modeled demand savings', `$${fmt(Math.round(s.shave.total / 100) * 100)}/yr`, `${fmt(s.shave.sysKw)} kW / ${fmt(s.shave.sysKwh)} kWh · avg ${fmt(s.shave.avgReduction)} kW cut`) : ''}
         ${iv ? stat('Measured peak', `${fmt(iv.peakKw, 1)} kW`, esc(iv.peakAt)) + stat('Load factor', `${fmt(iv.loadFactor * 100)}%`, esc(iv.peakHours))
           : pe ? stat('Peak estimate', `${fmt(pe.lo)}–${fmt(pe.hi)} kW`, `avg ${fmt(pe.avg)} kW ÷ typical ${esc(s.sector.toLowerCase())} load factor`, `Benchmarking ${pe.year}`) : ''}
         ${s.tariff ? stat('Rate schedule', esc(s.tariff), 'Facility list; confirm on bill') : stat('Rate class', iv ? (iv.peakKw >= 1000 ? 'B-20 range' : iv.peakKw >= 500 ? 'B-19 range' : 'B-10 range') : pe && pe.hi < 500 ? 'Likely B-10' : 'B-10 or B-19', 'Confirm on bill (PG&E bundled or CleanPowerSF)')}
@@ -854,8 +856,19 @@
       options: Object.assign(opts((v) => fmt(v / 1e6, 1) + ' GWh', (c) => (b[c.dataIndex].kwh ? `${fmt(c.parsed.y)} kWh` : `Not reported: ${b[c.dataIndex].status}`)), { onClick: (e, els) => { if (els.length) openSource(s, `Benchmarking ${b[els[0].index].year}`, `Benchmarking ${b[els[0].index].year}`); } }) });
     if (iv) {
       R.charts.peak = new Chart($('#peak-chart'), { type: 'line', data: { labels: iv.peakDay.map((p) => p.t), datasets: [{ data: iv.peakDay.map((p) => p.kw), borderColor: '#3c6390', borderWidth: 1.75, pointRadius: 0, tension: 0.2 }] }, options: opts((v) => fmt(v) + ' kW', (c) => `${fmt(c.parsed.y, 1)} kW`) });
-      R.charts.month = new Chart($('#month-chart'), { type: 'bar', data: { labels: iv.monthly.map((m) => m.m), datasets: [{ data: iv.monthly.map((m) => m.kw), backgroundColor: '#3c6390', maxBarThickness: 24 }] }, options: opts((v) => fmt(v) + ' kW', (c) => `${fmt(c.parsed.y, 1)} kW`) });
+      const sh = s.shave ? Object.fromEntries(s.shave.months.map((x) => [x.m, x.threshold])) : null;
+      R.charts.month = new Chart($('#month-chart'), { type: 'bar', data: { labels: iv.monthly.map((m) => m.m), datasets: [{ data: iv.monthly.map((m) => m.kw), backgroundColor: sh ? '#b3c8e4' : '#3c6390', maxBarThickness: 24, order: 2 }]
+        .concat(sh ? [{ type: 'line', data: iv.monthly.map((m) => (sh[m.m] != null ? +sh[m.m].toFixed(1) : null)), borderColor: '#06162b', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#06162b', stepped: false, order: 1 }] : []) },
+        options: opts((v) => fmt(v) + ' kW', (c) => (c.datasetIndex ? `With battery: ${fmt(c.parsed.y, 1)} kW` : `Measured: ${fmt(c.parsed.y, 1)} kW`)) });
     }
+  }
+  function shaveTable(s) {
+    const m = s.shave;
+    return `<div class="text-[14px] text-ink mt-6">Peak-shaving model</div>
+      <div class="text-[12px] text-mute mb-2">${fmt(m.sysKw)} kW / ${fmt(m.sysKwh)} kWh (${fmt(m.usable)} kWh usable at 90% depth of discharge), dispatched to hold each month's peak as low as every day allows. Assumes a full recharge overnight. Savings at $${fmt(m.ratePerKw, 2)}/kW-month (${esc(m.rateSrc)}).</div>
+      <div class="overflow-x-auto"><table class="w-full text-[12.5px] border border-line"><thead class="text-mute"><tr><th class="text-left px-3 py-1.5 font-normal">Month</th><th class="text-right px-3 font-normal">Measured peak</th><th class="text-right px-3 font-normal">With battery</th><th class="text-right px-3 font-normal">Cut</th><th class="text-left px-3 font-normal">Limited by</th><th class="text-right px-3 font-normal">Demand savings</th></tr></thead>
+      <tbody>${m.months.map((x) => `<tr class="border-t border-line2"><td class="px-3 py-1.5 num">${esc(x.m)}</td><td class="px-3 text-right num">${fmt(x.peak, 1)} kW</td><td class="px-3 text-right num">${fmt(x.threshold, 1)} kW</td><td class="px-3 text-right num text-ink">${fmt(x.reduction, 1)} kW</td><td class="px-3 text-ink2">${x.limit === 'energy' ? `energy (${fmt(x.energyUsed)} kWh/day)` : 'power'}</td><td class="px-3 text-right num">$${fmt(x.savings)}</td></tr>`).join('')}
+      <tr class="border-t border-line"><td class="px-3 py-1.5 text-ink" colspan="3">Year</td><td class="px-3 text-right num text-ink">avg ${fmt(m.avgReduction, 1)} kW</td><td class="px-3 text-ink2">Full ${fmt(m.sysKw)} kW cut needs ~${fmt(Math.round(m.needKwh / 10) * 10)} kWh</td><td class="px-3 text-right num text-ink">$${fmt(m.total)}</td></tr></tbody></table></div>`;
   }
   const parseInterval = (text, name) => window.EQ_parseInterval(text, name);
   function readFile(file, asText) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; asText ? r.readAsText(file) : r.readAsDataURL(file); }); }
@@ -1277,7 +1290,7 @@
   }
   function fileParams(s, f) {
     if (f.preview === 'permits') return [['Records', `${rec(s).permits.length}`], ['Building', `${rec(s).permits.filter((p) => p.kind === 'Building').length}`], ['Electrical', `${rec(s).permits.filter((p) => p.kind === 'Electrical').length}`], ['Snapshot', EQ.ASOF]];
-    if (f.preview === 'doc') return f.extracted || [['File', f.name]];
+    if (f.preview === 'doc' || f.preview === 'interval') return f.extracted || [['File', f.name]];
     if (f.preview === 'addr') { const m = EQ.addrDoc(s).record.summary; return [['Fields', `${EQ.addrDoc(s).record.fields.length}`], ['Required filled', `${m.required_done_pct}%`], ['Sources', `${EQ.addrDoc(s).record.sources.length}`], ['Built', f.date]]; }
     if (f.preview === 'bench') { const l = latestKwh(s); return [['Years', `${rec(s).benchmark.length}`], ['Latest reported', l ? `${l.year}: ${fmt(l.kwh)} kWh` : '—'], ['Floor area', `${fmt(s.floorArea)} sf`], ['Built', `${s.yearBuilt}`]]; }
     return [['File', f.name], ['Size', f.size], ['Received', f.date]];
@@ -1285,6 +1298,10 @@
   function filePreview(s, f) {
     if (f.preview === 'permits') return `<div class="max-h-[420px] overflow-y-auto">${rec(s).permits.slice(0, 40).map((p) => permitCard(s, p)).join('')}</div>`;
     if (f.preview === 'bench') return benchTable(s, null);
+    if (f.preview === 'interval') { const iv = s.interval; return `<div class="paper-doc p-5 text-[12.5px] text-ink2"><div class="text-ink text-[14px]">${esc(f.name)}</div>
+      <div class="mt-1">${iv ? `${fmt(iv.count)} rows · ${iv.minutes}-min · ${esc(iv.start)} to ${esc(iv.end)}` : ''}</div>
+      <pre class="mt-3 text-[11px] font-mono bg-white border border-line p-3 overflow-x-auto">timestamp,demand_kW,energy_kWh,outdoor_temp_F\n2025-01-01 00:00,69.57,17.392,24.5\n2025-01-01 00:15,69.84,17.46,23.8\n…</pre>
+      <div class="mt-3 flex gap-4"><a class="link" href="${esc(f.csv)}" download>Download CSV</a><button class="link" data-action="close-modal" onclick="setTimeout(()=>document.getElementById('load-panel')?.scrollIntoView({behavior:'smooth'}),50)">See charts and model</button></div></div>`; }
     if (f.preview === 'doc') return `<a href="${esc(f.pdf || f.img)}" target="_blank" rel="noopener" class="block border border-line bg-white"><img src="${esc(f.img)}" alt="${esc(f.name)}" class="w-full" /></a>
       <div class="flex flex-wrap gap-x-4 text-[11.5px] text-mute mt-2">${f.pdf ? `<a class="link" href="${esc(f.pdf)}" target="_blank" rel="noopener">Open PDF</a>` : ''}<a class="link" href="${esc(f.img)}" target="_blank" rel="noopener">Open full size</a>${f.imgNote ? `<span>${esc(f.imgNote)}</span>` : ''}</div>`;
     if (f.preview === 'addr') return addrSummaryHTML(s) + `<div class="mt-3 max-h-[420px] overflow-y-auto">${EQ.addrDoc(s).record.sources.map((x) => `<div class="border-t border-line2 py-2 text-[12px]"><div class="text-ink">${extLink(x.url, x.source_label)}</div><div class="text-mute">${esc(x.vintage || '')} · ${esc(x.license || '')} · ${esc(x.status)}</div><div class="text-ink2">${esc(x.summary || '')}</div></div>`).join('')}</div>`;
