@@ -1,0 +1,246 @@
+# Jurisdiction registry for the permits module.
+# Each jurisdiction maps an address (city/state, optionally zip) to one or more permit sources.
+# All URLs, tenant headers, dataset ids and field maps live here, not in code.
+# Adding another Tyler EnerGov city = copy the Hayward entry and change the tenant block.
+#
+# Placeholders available in SoQL / search templates:
+#   {number} {number_hi} {name} {name_upper} {suffix} {post_dir} {pre_dir} {street_line}
+#   {apn} {apn_digits} {block} {lot}
+# Entries marked "verify" were not confirmed live.
+
+client:
+  user_agent: "EQORE-SiteRecords/0.1 (+https://github.com/mschasz/eqore-site-records)"
+  rate_per_sec: 3
+  cache_dir: .cache/permits
+
+jurisdictions:
+
+  - id: hayward-ca
+    name: Hayward, CA
+    state: CA
+    cities: [Hayward]
+    zips: ["94540", "94541", "94542", "94543", "94544", "94545", "94557"]
+    records_request:
+      law: CPRA
+      office: City of Hayward, Development Services – Permit Center (records)
+      notes: >-
+        Records migrated before ~2014 ("Eden Legacy") have dates but almost no description and no files.
+        Copies of stamped plans need written consent from the owner and the designer (Health & Safety Code §19851);
+        Hayward uses an affidavit process that can take ~30 days.
+    sources:
+      - adapter: energov
+        label: City of Hayward e-Permits (Tyler EnerGov) public API
+        base_url: https://haywardca-energovpub.tylerhost.net/apps/selfservice/api
+        portal_url: https://haywardca-energovpub.tylerhost.net/apps/selfservice#/search
+        # Deep links: EnerGov uses #/permit/<CaseId> and #/plan/<CaseId>  (verify for other tenants)
+        record_url: "https://haywardca-energovpub.tylerhost.net/apps/selfservice#/{kind}/{case_id}"
+        tenant: { id: "1", name: HaywardCAProd, url: HaywardCAProd, culture: en-US }
+        modules:              # FilterModule value -> record_type, detail ModuleId, attachment ModuleIds to try
+          - { filter: 2, record_type: permit, detail: permitdetail, detail_module: 1, attachment_modules: [1] }
+          - { filter: 3, record_type: plan,   detail: null,         detail_module: 2, attachment_modules: [2, 1] }   # plan module id: verify
+        nearby_pages_max: 20
+
+  - id: san-francisco-ca
+    name: San Francisco, CA
+    state: CA
+    cities: [San Francisco]
+    apn_format: block/lot
+    records_request:
+      law: CPRA
+      office: SF Department of Building Inspection, Records Management Division
+      notes: Plan copies need owner and design-professional consent (Health & Safety Code §19851).
+    sources:
+      - adapter: socrata
+        label: DataSF Building Permits (i98e-djp9)
+        domain: data.sf.gov
+        dataset: i98e-djp9
+        record_type: permit
+        where_address: "street_number='{number}' AND upper(street_name)='{name_upper}'"
+        where_street: "upper(street_name)='{name_upper}'"        # used for number ranges and nearby addresses
+        where_apn: "block='{block}' AND lot='{lot}'"
+        order: filed_date DESC
+        fields:
+          permit_number: permit_number
+          permit_type: permit_type_definition
+          status: status
+          apply_date: filed_date
+          issue_date: issued_date
+          final_date: completed_date
+          description: description
+          valuation_usd: [revised_cost, estimated_cost]
+          occupancy: existing_occupancy
+          address: [street_number, street_name, street_suffix, zipcode]
+          number: street_number
+          street_name: street_name
+          apn: [block, lot]
+        portal_url: "https://dbiweb02.sfgov.org/dbipts/default.aspx?page=Permit&PermitNumber={permit_number}"   # verify
+        record_api_url: "https://data.sf.gov/resource/i98e-djp9.json?permit_number={permit_number}"
+      - adapter: socrata
+        label: DataSF Electrical Permits (ftty-kx6y)
+        domain: data.sf.gov
+        dataset: ftty-kx6y
+        record_type: permit
+        permit_type_default: Electrical
+        where_address: "street_number='{number}' AND upper(street_name)='{name_upper}'"
+        where_street: "upper(street_name)='{name_upper}'"
+        where_apn: "block='{block}' AND lot='{lot}'"
+        order: filed_date DESC
+        fields:
+          permit_number: permit_number
+          status: status
+          apply_date: [filed_date, application_creation_date]
+          issue_date: issued_date
+          final_date: completed_date
+          description: description
+          valuation_usd: permit_valuation
+          address: [street_number, street_name, street_suffix, zip_code]
+          number: street_number
+          street_name: street_name
+          apn: [block, lot]
+        portal_url: "https://dbiweb02.sfgov.org/dbipts/default.aspx?page=Permit&PermitNumber={permit_number}"   # verify
+        record_api_url: "https://data.sf.gov/resource/ftty-kx6y.json?permit_number={permit_number}"
+
+  - id: los-angeles-ca
+    name: Los Angeles, CA
+    state: CA
+    cities: [Los Angeles]
+    records_request: { law: CPRA, office: "LA Department of Building and Safety, Records Section" }
+    sources:
+      - adapter: socrata
+        label: LADBS Electrical Permits 2020–present (9k3p-zrda)
+        domain: data.lacity.org
+        dataset: 9k3p-zrda
+        record_type: permit
+        where_address: "upper(primary_address) like '{number} %{name_upper}%'"
+        where_apn: "apn='{apn}'"                                   # verify APN format
+        order: submitted_date DESC
+        fields:
+          permit_number: permit_nbr
+          permit_type: permit_type
+          work_class: permit_sub_type
+          status: status_desc
+          apply_date: submitted_date
+          description: work_desc
+          address: primary_address
+          apn: apn
+        flag_fields: { solar: solar, ev: ev }
+        record_api_url: "https://data.lacity.org/resource/9k3p-zrda.json?permit_nbr={permit_number}"
+
+  - id: san-jose-ca
+    name: San José, CA
+    state: CA
+    cities: [San Jose, San José]
+    records_request: { law: CPRA, office: "City of San José Building Division, Records" }
+    sources:
+      - adapter: csv_download
+        label: San José Building Permits – Active (data.sanjoseca.gov CSV)
+        record_type: permit
+        # CKAN API/datastore paths are disallowed by robots.txt; the CSV download links are allowed.
+        urls:
+          - https://data.sanjoseca.gov/dataset/fd9ceb0c-75e0-402e-9fe3-3f6e04f2c23f/resource/761b7ae8-3be1-4ad6-923d-c7af6404a904/download/buildingpermitsactive.csv
+          # expired / under-inspection / last-30-days sibling datasets: add their download URLs here (verify ids)
+        date_format: "%m/%d/%Y %I:%M:%S %p"
+        fields:
+          permit_number: FOLDERNUMBER
+          permit_type: FOLDERDESC
+          work_class: SUBTYPEDESCRIPTION
+          status: Status
+          issue_date: ISSUEDATE
+          final_date: FINALDATE
+          description: WORKDESCRIPTION
+          address: gx_location
+          apn: ASSESSORS_PARCEL_NUMBER
+          valuation_usd: PERMITVALUATION
+          square_feet: SQUAREFOOTAGE
+          contractor: CONTRACTOR
+          applicant: APPLICANT
+      - adapter: browser
+        label: SJPermits.org address lookup (browser automation)
+        portal_url: https://www.sjpermits.org/
+        flow: not_implemented     # search: street number + street name (no suffix/direction) or APN without dashes
+
+  - id: boston-ma
+    name: Boston, MA
+    state: MA
+    cities: [Boston, Dorchester, Roxbury, South Boston, East Boston, Charlestown, Jamaica Plain, Roslindale, West Roxbury, Hyde Park, Mattapan, Brighton, Allston]
+    records_request:
+      law: MA Public Records Law
+      office: City of Boston Records Access Officer (Inspectional Services Department)
+    sources:
+      # data.boston.gov robots.txt disallows /api/ (incl. CKAN datastore_search), so the CKAN adapter
+      # can't be used here. The dataset download (/dataset/.../download/...) is allowed: ~240 MB CSV,
+      # cached on disk for a day and filtered locally. The CKAN adapter remains for portals that allow the API.
+      - adapter: csv_download
+        label: Analyze Boston – Approved Building Permits (CSV export)
+        record_type: permit
+        urls:
+          - https://data.boston.gov/dataset/cd1ec3ff-6ebf-4a65-af68-8329eceab740/resource/6ddcd912-32a0-43df-9908-63574f8c7e77/download/tmpm4batnk2.csv
+        portal_url: https://data.boston.gov/dataset/approved-building-permits
+        fields:
+          permit_number: permitnumber
+          permit_type: permittypedescr
+          work_class: worktype
+          status: status
+          issue_date: issued_date
+          expire_date: expiration_date
+          description: [description, comments]
+          address: address
+          apn: parcel_id
+          valuation_usd: declared_valuation
+          square_feet: sq_feet
+          occupancy: occupancytype
+          applicant: applicant
+        tag_rules: { solar: { field: worktype, equals: SOL } }
+
+  - id: cambridge-ma
+    name: Cambridge, MA
+    state: MA
+    cities: [Cambridge]
+    records_request: { law: MA Public Records Law, office: "City of Cambridge Inspectional Services Department" }
+    sources:
+      - adapter: socrata
+        label: Cambridge Permit Finder (3wsm-e5jx) + type datasets
+        domain: data.cambridgema.gov
+        dataset: 3wsm-e5jx
+        record_type: permit
+        where_address: "upper(full_address) like '{number} {name_upper}%'"
+        order: issue_date DESC
+        id_prefix_field: permit_type
+        fields:
+          permit_number: id
+          permit_type: permit_type
+          status: status
+          apply_date: applicant_submit_date
+          issue_date: issue_date
+          address: full_address
+          apn: mbl
+        follow_url_field: specific_url           # per-type dataset row with the description
+        follow_description_fields: [proposed_work_description, detailed_description_of_work, isd_approved_description, type_of_work_to_be_performed, description]
+        follow_valuation_fields: [estimated_value, total_cost]
+        follow_documented_fields:          # structured columns -> extracted facts with confidence "documented"
+          service_amps: amps_existing_service
+          service_voltage: volts_existing_service
+          meters_existing: count_of_meters_existing
+          ampacity_new: ampacity
+
+  - id: palo-alto-ca
+    name: Palo Alto, CA
+    state: CA
+    cities: [Palo Alto]
+    records_request: { law: CPRA, office: "City of Palo Alto Development Center, Records" }
+    sources:
+      - adapter: browser
+        label: Palo Alto Accela Citizen Access
+        portal_url: https://aca-prod.accela.com/PALOALTO/
+        flow: accela
+
+  - id: holliston-ma
+    name: Holliston, MA
+    state: MA
+    cities: [Holliston]
+    records_request: { law: MA Public Records Law, office: "Town of Holliston Building Department" }
+    sources:
+      - adapter: browser
+        label: Holliston public permit reports (PeopleGIS MapsOnline)
+        portal_url: https://www.mapsonline.net/hollistonma/public_permit_reports.html.php
+        flow: not_implemented

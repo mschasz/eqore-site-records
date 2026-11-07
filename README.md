@@ -52,3 +52,12 @@ Rate schedule, ownership, service size and existing solar or storage are not in 
 - Peak demand is an estimate from annual kWh and typical load factors until interval data is uploaded.
 - Uploaded PDFs and photos are stored and previewed, but not read automatically. Engineers enter ratings in the Electrical tab.
 - The Green Button parser handles PG&E CSV exports (TYPE, DATE, START TIME, USAGE) and simple timestamp + kW/kWh files. It does not read ESPI XML.
+
+## Permit retrieval module
+
+`permits/` is a Python package that takes a site address and returns every permit the AHJ has on file. It downloads public attachments, extracts equipment facts and writes everything with provenance. It currently covers Hayward (EnerGov), San Francisco, Los Angeles, San José, Boston and Cambridge. See [permits/README.md](permits/README.md).
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m permits fetch "2457 Industrial Pkwy W, Hayward, CA 94545"
+```
