@@ -259,7 +259,7 @@
     const v = $('#lead-done-view'); v.hidden = false; window.scrollTo({ top: 0 });
     const e = lead.estimate, got = [lead.files.some((f) => f.kind === 'bill') && 'bills', lead.interval && 'interval data', lead.files.some((f) => f.kind === 'photo') && 'photos'].filter(Boolean);
     const steps = [['01', 'Lead form completed'], ['02', 'Sales call and optimization'], ['03', 'Site data collection started'], ['04', 'Site data collection completed']];
-    const cur = got.length ? 2 : 1;
+    const cur = 2; // the form itself is project data, so 01 and 02 count as done
     v.innerHTML = `<div class="eyebrow">Request received</div>
       <h1 class="display text-[40px] leading-tight mt-3">Thanks, ${esc(lead.contact.name.split(' ')[0])}. We'll be in touch within one business day.</h1>
       <p class="text-[15px] text-ink2 mt-3">${esc(lead.facility)} · ${esc(lead.geo ? lead.geo.matched : lead.address)}</p>

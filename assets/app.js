@@ -83,9 +83,10 @@
     if (s.stage && s.stage !== 'intake') return EQ.INTAKE.length; // past intake: all four steps done
     // 04 is complete (index 4 = all four steps done) once every required facility input is in.
     // Progress follows the data only; nobody sets it by hand.
-    //  01 done when the lead came in through the lead form or the facility list.
-    //  01-02 done (03 current) as soon as the customer has sent data; all four done once the required facility inputs are in.
+    //  Any data on the project (customer files or values, public records, the address lookup) marks 01 and 02 done.
+    //  All four are done once the required facility inputs are in.
     if (hasCustomerData(s)) return openBy(s, 'fm').length ? 2 : 4;
+    if (s.dps.some((d) => d.value != null) || EQ.addrDoc(s) || (s.files || []).length) return 2;
     return s.fromLead || s.fromList ? 1 : 0;
   }
   function nextAction(s) {
