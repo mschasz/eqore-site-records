@@ -3,12 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EQORE · Site Evaluation</title>
-  <meta name="description" content="EQORE site evaluation: public records and customer data assembled per site to judge readiness for a battery installation." />
+  <title>EQORE · Site Records</title>
+  <meta name="description" content="EQORE site records for C&I battery storage projects: site data, provenance, permits, interconnection and NFPA 855 documentation." />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
   <script>
     tailwind.config = {
@@ -28,35 +30,55 @@
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body class="bg-paper text-ink font-sans antialiased">
-  <header class="sticky top-0 z-[1100] bg-white border-b border-line">
-    <div class="max-w-[1500px] mx-auto px-4 lg:px-8 h-16 flex items-center gap-5">
-      <a href="#/" class="flex items-baseline gap-3 shrink-0" aria-label="EQORE site evaluation home">
-        <span class="wordmark">EQORE</span><span class="hidden sm:inline eyebrow">Site Evaluation</span>
-      </a>
-      <nav id="crumbs" class="hidden md:flex items-center gap-2 text-[13px] text-ink2 min-w-0"></nav>
-      <div class="flex-1"></div>
-      <div class="relative w-full max-w-xs">
-        <input id="global-search" type="search" autocomplete="off" placeholder="Address, APN or tenant" class="field w-full h-9 pl-3 pr-3 text-[13px]" />
-        <div id="search-results" class="hidden absolute left-0 right-0 top-11 bg-white border border-line shadow-pop"></div>
-      </div>
-      <div class="relative">
-        <button id="user-menu-btn" class="w-8 h-8 rounded-full bg-ink text-white grid place-items-center text-[11px] font-medium" aria-haspopup="true" aria-label="Account menu">EV</button>
-        <div id="user-menu" class="hidden absolute right-0 top-11 w-56 bg-white border border-line shadow-pop py-1 text-[13px]">
-          <div class="px-3 py-2 border-b border-line2"><div class="font-medium">Elena Vásquez, PE</div><div class="text-mute text-xs">Project Engineer</div></div>
-          <button data-action="reset-demo" class="w-full text-left px-3 py-2 hover:bg-paper">Clear my reviews and uploads</button>
+
+  <header id="app-header" class="sticky top-0 z-[1100] bg-white border-b border-line">
+    <div class="max-w-[1600px] mx-auto px-4 lg:px-8">
+      <div class="h-16 flex items-center gap-5">
+        <a href="#/" class="flex items-baseline gap-3 shrink-0" aria-label="EQORE site records home">
+          <span class="wordmark">EQORE</span>
+          <span class="hidden sm:inline eyebrow">Site Records</span>
+        </a>
+        <nav id="crumbs" class="hidden xl:flex items-center gap-2 text-[13px] text-ink2 min-w-0"></nav>
+        <div class="flex-1"></div>
+        <div class="relative w-full max-w-sm hidden sm:block">
+          <input id="global-search" type="search" autocomplete="off" placeholder="Facility, address or APN"
+            class="field w-full h-9 pl-3 pr-10 text-[13px]" />
+          <kbd class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-mute border border-line px-1.5 leading-4">/</kbd>
+          <div id="search-results" class="hidden absolute left-0 right-0 top-11 bg-white border border-line shadow-pop"></div>
+        </div>
+        <select id="region-filter" class="field h-9 px-2.5 text-[13px] hidden lg:block" aria-label="Region">
+          <option value="all">All regions</option>
+          <option value="ca">California · PG&amp;E</option>
+          <option value="ma">Massachusetts</option>
+          <option value="nh">New Hampshire</option>
+        </select>
+        <div class="relative">
+          <button id="user-menu-btn" class="flex items-center gap-2 h-9 pl-1 pr-1.5 hover:bg-paper" aria-haspopup="true" aria-label="Account menu">
+            <span class="w-7 h-7 rounded-full bg-ink text-white grid place-items-center text-[11px] font-medium">EV</span>
+          </button>
+          <div id="user-menu" class="hidden absolute right-0 top-11 w-56 bg-white border border-line shadow-pop py-1 text-[13px]">
+            <div class="px-3 py-2 border-b border-line2"><div class="font-medium">Elena Vásquez, PE</div><div class="text-mute text-xs">Project Engineer, West</div></div>
+            <button data-action="reset-demo" class="w-full text-left px-3 py-2 hover:bg-paper">Reset demo data</button>
+            <button data-action="shortcuts" class="w-full text-left px-3 py-2 hover:bg-paper">Keyboard shortcuts</button>
+          </div>
         </div>
       </div>
+      <div id="stage-rail" class="flex items-stretch overflow-x-auto no-scrollbar -mb-px"></div>
     </div>
   </header>
 
-  <main id="view-list" class="max-w-[1500px] mx-auto px-4 lg:px-8 py-8"></main>
-  <main id="view-site" class="hidden max-w-[1500px] mx-auto px-4 lg:px-8 py-6"></main>
+  <main id="view-pipeline" class="max-w-[1600px] mx-auto px-4 lg:px-8 py-8 space-y-8"></main>
+  <main id="view-site" class="hidden max-w-[1600px] mx-auto px-4 lg:px-8 py-8 space-y-8"></main>
+  <main id="view-responder" class="hidden max-w-3xl mx-auto px-4 py-8"></main>
 
   <div id="modal-root"></div>
   <div id="toast-root" class="fixed bottom-5 right-5 z-[3000] flex flex-col gap-2 items-end pointer-events-none"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
   <script src="assets/reference.js"></script>
   <script src="assets/sf_records.js"></script>
   <script src="assets/data.js"></script>

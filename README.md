@@ -26,17 +26,19 @@ Five San Francisco candidates (PG&E territory), found by screening DataSF energy
 
 Rate schedule, ownership, service size and existing solar or storage are not in public records. They have to come from the customer.
 
-## Site page
+## Projects view
 
-- **Readiness snapshot:** five areas (electrical service, load & rate, equipment location, permits & AHJ, utility & interconnection). Each is marked Confirmed / Partial / Unknown / Risk with a one-line reason. Customer evidence or an engineer's assessment upgrades a status, and the tile shows where its status came from.
-- **Findings from records:** risks, supporting facts and notes, each citing its permit or benchmarking record. Engineers mark findings as reviewed.
-- **Needed from the customer:** bills, Green Button interval data, SLD, switchgear and meter photos, equipment-area photos and a facility questionnaire. Upload in place, or draft the request text.
-- **Tabs:**
-  - Electrical: permits filtered and tagged by rating and equipment, plus an NEC 705.12 / 705.13 / 705.11 tie-in check and fault duty vs. SCCR from engineer inputs.
-  - Load & rate: benchmarking history, a peak estimate, and Green Button CSV parsing in the browser (peak, timing, load factor, monthly peaks).
-  - Equipment location: aerial imagery with a distance-measuring tool and siting criteria.
-  - Permit records: full history, filterable, with live refresh from DataSF.
-  - Customer documents and SF requirements.
+- US map with state and county boundaries (US Census via us-atlas). EQORE's states (CA, MA, NH) are shaded and counties with leads are highlighted. Leads cluster by county until you zoom in.
+- Step rail for EQORE's six steps, a "needs action" queue, and a sortable facilities table with an overview status per area.
+
+## Site record
+
+- **Overview tiles:** electrical service, load & rate, equipment location, permits & AHJ, utility & interconnection. Each shows a status and a one-line reason. Click a tile for its primary records, findings and data points, and to set an engineer assessment.
+- **Findings from records:** risks, supporting facts and notes. Click any finding or citation to open the underlying permit or benchmarking record, with a link to DataSF. Engineers mark findings as reviewed.
+- **Open items:** text the facility for missing photos and data (SMS or email, with a preview of their upload page), or upload the file directly. Uploaded photos attach to the data point they answer.
+- **Sections:** electrical service & tie-in (with the NEC 705.12 / 705.13 / 705.11 check from engineer inputs), interval data & tariff (benchmarking history plus Green Button CSV parsing), equipment location & fire code, permits & interconnection, and mobilization from step 04. Every value's source opens the primary record.
+- **Permit records:** full history, filterable, with live refresh from DataSF.
+- **Documents & approvals** register, site placard, AHJ/code links, files and contacts.
 
 ## Data
 

@@ -166,7 +166,7 @@ input[type="range"].eq-range::-moz-range-thumb { width: 12px; height: 12px; bord
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-/* Readiness snapshot tiles: status shown as a top rule + tag */
+/* Overview tiles: status as a top rule + tag */
 .snap-good { box-shadow: inset 0 3px 0 var(--steel); }
 .snap-partial { box-shadow: inset 0 3px 0 #b07a20; }
 .snap-unknown { box-shadow: inset 0 3px 0 var(--line); }
