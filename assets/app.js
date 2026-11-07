@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'eqore.records.v8';
+  const STORE_KEY = 'eqore.records.v9';
   const S = {
     sites: loadSites(),
     route: { view: 'pipeline', id: null },
@@ -825,6 +825,8 @@
     const stat = (k, v, sub, src) => `<div><dt class="text-[11.5px] text-mute">${k}</dt><dd class="display text-[20px] num leading-tight mt-0.5">${src ? `<button class="hover:text-blue" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${v}</button>` : v}</dd><dd class="text-[11.5px] text-ink2">${sub}</dd></div>`;
     el.innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div class="lg:col-span-8">
+        ${s.billDemand ? `<div class="text-[14px] text-ink">Billed max demand by month</div><div class="text-[12px] text-mute mb-2">Read from the chart on ${esc(s.billDemand.file)} (${esc(s.billDemand.rate)}), about ±2 kW. Click a bar for the bill.</div>
+        <div class="relative h-[200px]"><canvas id="billdemand-chart" role="img" aria-label="Billed max demand by month"></canvas></div>` : ''}
         ${b.length ? `<div class="text-[14px] text-ink">Grid electricity by year</div><div class="text-[12px] text-mute mb-2">SF benchmarking, grid purchase. Gray = not reported. Click a bar for the record.</div>
         <div class="relative h-[200px]"><canvas id="bench-chart" role="img" aria-label="Annual grid electricity"></canvas></div>` : `<div class="text-[14px] text-ink">No public energy benchmarking for this address</div><div class="text-[12.5px] text-ink2 mt-1">${s.system ? `Facility list: peak ${fmt((EQ.addrDoc(s).facility || {}).peak_kw)} kW (${esc((EQ.addrDoc(s).facility || {}).peak_basis)}), peak-shave target ${fmt((EQ.addrDoc(s).facility || {}).target_kw)} kW, ${esc(s.system.status)} system ${fmt(s.system.kw)} kW / ${fmt(s.system.kwh)} kWh.` : ''}${iv ? '' : ' Upload 12 months of 15-min interval data to size against measured load.'}</div>`}
         ${iv ? `<div class="text-[14px] text-ink mt-5">Peak day from interval data</div><div class="text-[12px] text-mute mb-2">${esc(iv.file)} · ${fmt(iv.count)} intervals · ${iv.minutes}-min · ${esc(iv.start)} – ${esc(iv.end)}</div>
@@ -840,6 +842,11 @@
       </dl></div>`;
     const opts = (tick, label) => ({ responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#06162b', cornerRadius: 0, padding: 8, callbacks: { label } } },
       scales: { x: { grid: { display: false }, ticks: { color: '#7d828b', font: { family: 'Inter', size: 10 }, maxTicksLimit: 12, maxRotation: 0 }, border: { color: '#d3cecd' } }, y: { beginAtZero: true, grid: { color: '#efece9' }, border: { display: false }, ticks: { color: '#7d828b', font: { family: 'Inter', size: 10 }, callback: tick } } } });
+    if (s.billDemand) {
+      const m = s.billDemand.months, pk = Math.max(...m.map((x) => x[1]));
+      R.charts.billdemand = new Chart($('#billdemand-chart'), { type: 'bar', data: { labels: m.map((x) => new Date(x[0] + '-15').toLocaleString('en-US', { month: 'short', year: '2-digit' })), datasets: [{ data: m.map((x) => x[1]), backgroundColor: m.map((x) => (x[1] === pk ? '#3c6390' : '#b3c8e4')), maxBarThickness: 30 }] },
+        options: Object.assign(opts((v) => fmt(v) + ' kW', (c) => `${fmt(c.parsed.y)} kW billed max`), { onClick: () => { const f = s.files.find((x) => x.name === s.billDemand.file); if (f) openFileModal(s, f.id); } }) });
+    }
     if (b.length) R.charts.bench = new Chart($('#bench-chart'), { type: 'bar', data: { labels: b.map((x) => x.year), datasets: [{ data: b.map((x) => x.kwh || 0), backgroundColor: b.map((x) => (x.kwh ? '#3c6390' : '#d3cecd')), maxBarThickness: 30 }] },
       options: Object.assign(opts((v) => fmt(v / 1e6, 1) + ' GWh', (c) => (b[c.dataIndex].kwh ? `${fmt(c.parsed.y)} kWh` : `Not reported: ${b[c.dataIndex].status}`)), { onClick: (e, els) => { if (els.length) openSource(s, `Benchmarking ${b[els[0].index].year}`, `Benchmarking ${b[els[0].index].year}`); } }) });
     if (iv) {
@@ -1258,6 +1265,7 @@
   }
   function fileParams(s, f) {
     if (f.preview === 'permits') return [['Records', `${rec(s).permits.length}`], ['Building', `${rec(s).permits.filter((p) => p.kind === 'Building').length}`], ['Electrical', `${rec(s).permits.filter((p) => p.kind === 'Electrical').length}`], ['Snapshot', EQ.ASOF]];
+    if (f.preview === 'doc') return f.extracted || [['File', f.name]];
     if (f.preview === 'addr') { const m = EQ.addrDoc(s).record.summary; return [['Fields', `${EQ.addrDoc(s).record.fields.length}`], ['Required filled', `${m.required_done_pct}%`], ['Sources', `${EQ.addrDoc(s).record.sources.length}`], ['Built', f.date]]; }
     if (f.preview === 'bench') { const l = latestKwh(s); return [['Years', `${rec(s).benchmark.length}`], ['Latest reported', l ? `${l.year}: ${fmt(l.kwh)} kWh` : '—'], ['Floor area', `${fmt(s.floorArea)} sf`], ['Built', `${s.yearBuilt}`]]; }
     return [['File', f.name], ['Size', f.size], ['Received', f.date]];
@@ -1265,6 +1273,8 @@
   function filePreview(s, f) {
     if (f.preview === 'permits') return `<div class="max-h-[420px] overflow-y-auto">${rec(s).permits.slice(0, 40).map((p) => permitCard(s, p)).join('')}</div>`;
     if (f.preview === 'bench') return benchTable(s, null);
+    if (f.preview === 'doc') return `<a href="${esc(f.pdf || f.img)}" target="_blank" rel="noopener" class="block border border-line bg-white"><img src="${esc(f.img)}" alt="${esc(f.name)}" class="w-full" /></a>
+      <div class="flex flex-wrap gap-x-4 text-[11.5px] text-mute mt-2">${f.pdf ? `<a class="link" href="${esc(f.pdf)}" target="_blank" rel="noopener">Open PDF</a>` : ''}<a class="link" href="${esc(f.img)}" target="_blank" rel="noopener">Open full size</a>${f.imgNote ? `<span>${esc(f.imgNote)}</span>` : ''}</div>`;
     if (f.preview === 'addr') return addrSummaryHTML(s) + `<div class="mt-3 max-h-[420px] overflow-y-auto">${EQ.addrDoc(s).record.sources.map((x) => `<div class="border-t border-line2 py-2 text-[12px]"><div class="text-ink">${extLink(x.url, x.source_label)}</div><div class="text-mute">${esc(x.vintage || '')} · ${esc(x.license || '')} · ${esc(x.status)}</div><div class="text-ink2">${esc(x.summary || '')}</div></div>`).join('')}</div>`;
     if (f.thumb) return `<img src="${f.thumb}" alt="${esc(f.name)}" class="w-full border border-line" />`;
     return `<div class="paper-doc p-6 text-[13px] text-ink2">${esc(f.name)} · ${esc(f.size)}. Preview not available for this file type; values are entered from it by the engineer.</div>`;

@@ -631,6 +631,81 @@ EQ.applyLead = function (s) {
   if (!lead.geo) s.findings.push({ sev: 'risk', area: 'site', text: 'The address did not match in the Census geocoder; confirm the location with the customer.', src: 'Lead form' });
   s.activity.unshift({ t: lead.createdAt, who: c.name || 'Customer', text: `Lead form submitted${(lead.files || []).length ? ` with ${(lead.files || []).length} file(s)` : ''}` });
 };
+/* ---------------------------------------------------------------------------
+   Customer documents received for a project, with the values read from them.
+   Bill images are redacted (account number) before they are stored here.
+   --------------------------------------------------------------------------- */
+EQ.CUSTOMER_DOCS = {
+  '120-lowland-st-holliston-ma': {
+    bill: {
+      key: 'doc-bill-2026-10', name: 'Eversource_bill_2026-10.pdf', type: 'pdf', date: '2026-10-27', size: '159 KB', confLabel: 'Utility bill',
+      img: 'docs/120-lowland-st-holliston-ma/eversource_bill_2026-10_redacted.png', pdf: 'docs/120-lowland-st-holliston-ma/Eversource_bill_2026-10_redacted.pdf', imgNote: 'Account number redacted; original kept with the customer file.',
+      rate: 'Eversource G-2', period: 'Oct 2026', total: 28600,
+      charges: [['Energy', 14872], ['Demand, max', 8580], ['Demand, peak', 3432], ['Taxes & fees', 1716]],
+      // 12-month max demand, read from the bill's bar chart (about ±2 kW)
+      demand: [['2025-11', 260], ['2025-12', 263], ['2026-01', 273], ['2026-02', 275], ['2026-03', 269], ['2026-04', 262], ['2026-05', 260], ['2026-06', 272], ['2026-07', 279], ['2026-08', 284], ['2026-09', 285], ['2026-10', 276]],
+    },
+    sld: {
+      key: 'doc-sld-e001', name: 'Existing_SLD_customer.pdf', type: 'pdf', date: '2026-10-27', size: '64 KB', confLabel: 'Customer drawing (concept, not for construction)',
+      img: 'docs/120-lowland-st-holliston-ma/existing_sld_E-001_revC.png', pdf: 'docs/120-lowland-st-holliston-ma/Existing_SLD_customer.pdf',
+      drawing: 'E-001 rev C', service: '480Y/277V, 3-phase 4-wire (Eversource)', xfmrKva: 750, mainA: 1200, busA: 1200, spareA: 200,
+      feeders: ['MCC-1 motor control center', 'HVAC mechanical loads', 'LP-1 lighting panel', 'PROC process loads'],
+      notes: ['Marked "Demo document - not for construction".', 'Field verify protective devices, feeder sizes, short-circuit duty and spare capacity.'],
+    },
+  },
+};
+EQ.applyCustomerDocs = function (s) {
+  const docs = EQ.CUSTOMER_DOCS[s.id]; if (!docs) return;
+  const fmtN = (n, x = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: x });
+  const dp = (k) => s.dps.find((d) => d.key === k);
+  const set = (k, value, f, o = {}) => { const d = dp(k); if (!d) return; Object.assign(d, { value, src: f.name, file: f.key, srcUrl: null, srcType: 'customer', conf: o.conf || 'high', requiresSignoff: o.signoff ?? true, reviewNote: o.note || null, severity: null, verified: false }); };
+  const fileOf = (f, dps, extracted) => ({ id: `${s.id}:${f.key}`, key: f.key, name: f.name, type: f.type, cat: 'Customer upload', uploader: { name: 'Facility contact', role: 'Customer' }, date: f.date, origin: 'Customer-provided', conf: 'high', confLabel: f.confLabel, size: f.size, preview: 'doc', img: f.img, pdf: f.pdf, imgNote: f.imgNote, extracted, dps });
+  const b = docs.bill, sl = docs.sld;
+  const demandCost = b.charges.filter(([k]) => /Demand/.test(k)).reduce((a, [, v]) => a + v, 0);
+  const pk = b.demand.reduce((a, x) => (x[1] > a[1] ? x : a)), lo = Math.min(...b.demand.map((x) => x[1]));
+  const oct = b.demand[b.demand.length - 1][1];
+  // Engineering checks from the SLD and bill
+  const sysKw = (s.system && s.system.kw) || 100;
+  const invA = (sysKw * 1000) / (Math.sqrt(3) * 480), ocpdMin = invA * 1.25, std = [100, 110, 125, 150, 175, 200, 225, 250, 300, 350, 400];
+  const ocpd = std.find((x) => x >= ocpdMin) || Math.ceil(ocpdMin);
+  const allow120 = sl.busA * 1.2 - sl.mainA;
+  const fla = (sl.xfmrKva * 1000) / (Math.sqrt(3) * 480), isc = fla / 0.0575 / 1000;
+  const loading = (pk[1] / sl.xfmrKva) * 100;
+  s.docCalc = { invA, ocpd, allow120, fla, isc, loading, sysKw };
+  s.billDemand = { file: b.name, months: b.demand, rate: b.rate };
+  s.peakText = `${pk[1]} kW billed max (${new Date(pk[0] + '-15').toLocaleString('en-US', { month: 'short', year: 'numeric' })})`;
+  s.summary = `${s.summary} The ${b.period} bill shows ${lo}–${pk[1]} kW billed max and demand at ${fmtN((demandCost / b.total) * 100)}% of the bill; the customer SLD shows a 200 A spare on the 1,200 A MDP-1 for the battery.`;
+
+  // Files
+  s.files = s.files.filter((f) => !/^doc-/.test(f.key));
+  s.files.unshift(fileOf(sl, ['voltage', 'mainBreaker', 'transformer', 'spareBreaker'], [['Drawing', `${sl.drawing}, issued ${sl.date}`], ['Service', sl.service], ['Transformer T-1', `${fmtN(sl.xfmrKva)} kVA, 480Y/277V`], ['Main breaker', `${fmtN(sl.mainA)} A`], ['MDP-1 bus', `${fmtN(sl.busA)} A`], ['Spare for BESS POI', `${sl.spareA} A (proposed)`], ['Feeders', sl.feeders.join('; ')], ['Notes', sl.notes.join(' ')]]));
+  s.files.unshift(fileOf(b, ['tariff', 'peakDemand'], [['Statement', `${b.date} (${b.period})`], ['Rate', b.rate], ['Account', 'Redacted'], ...b.charges.map(([k, v]) => [k, `$${fmtN(v)}`]), ['Total', `$${fmtN(b.total)}`], ['Max demand, 12 months', `${lo}–${pk[1]} kW (peak ${pk[0]})`]]));
+
+  // Data points
+  set('tariff', `${b.rate} · ${b.period} bill $${fmtN(b.total)}; demand $${fmtN(demandCost)} (${fmtN((demandCost / b.total) * 100)}% of bill)`, b, { signoff: false });
+  set('peakDemand', `Billed max ${pk[1]} kW (${pk[0]}); ${lo}–${pk[1]} kW over 12 months, ${oct} kW in ${b.period}`, b, { conf: 'medium', note: 'Read from the bill chart (about ±2 kW); 15-min interval data still needed for sizing' });
+  set('voltage', sl.service, sl, { conf: 'medium', note: 'Customer concept SLD; field verify' });
+  set('mainBreaker', `Main CB ${fmtN(sl.mainA)} A on MDP-1 (${fmtN(sl.busA)} A bus); trip unit and GFPE not shown`, sl, { conf: 'medium', note: 'Customer concept SLD; confirm trip settings and GFPE on site' });
+  set('transformer', `T-1 ${fmtN(sl.xfmrKva)} kVA, 480Y/277V; impedance and ownership not shown`, sl, { conf: 'medium', note: 'Request impedance from Eversource' });
+  set('spareBreaker', `Spare ${sl.spareA} A position on MDP-1 proposed as BESS POI; ${sysKw} kW needs a ${ocpd} A breaker, within the ${fmtN(allow120)} A the 120% rule allows`, sl, { conf: 'medium', note: `Confirm the spare is a physical breaker space that takes a ${ocpd} A breaker` });
+
+  // Overview tiles
+  s.areas.electrical = ['partial', `${sl.service.split(',')[0]} · T-1 ${fmtN(sl.xfmrKva)} kVA · ${fmtN(sl.mainA)} A main / ${fmtN(sl.busA)} A bus · ${sl.spareA} A spare POI`, sl.name];
+  s.areas.load = ['partial', `Billed max ${lo}–${pk[1]} kW; demand charges ${fmtN((demandCost / b.total) * 100)}% of the ${b.period} bill`, b.name];
+
+  // Findings (appended; reviewed indexes of earlier findings stay stable)
+  const F = (sev, area, text, src) => s.findings.push({ sev, area, text, src });
+  F('good', 'electrical', `Point of interconnection fits: the ${sysKw} kW system draws about ${fmtN(invA)} A at 480 V, so it needs a ${ocpd} A breaker (125% of output). That fits the ${sl.spareA} A spare and the ${fmtN(allow120)} A the NEC 705.12 120% rule allows on a ${fmtN(sl.busA)} A bus with a ${fmtN(sl.mainA)} A main (breaker at the opposite end from the main).`, sl.name);
+  F('good', 'electrical', `Transformer headroom: the ${pk[1]} kW billed peak is about ${fmtN(loading)}% of the ${fmtN(sl.xfmrKva)} kVA T-1, leaving room to charge at ${sysKw} kW.`, `${sl.name} · ${b.name}`);
+  F('info', 'electrical', `No fault current on the SLD. If T-1 has a typical 5.75% impedance, available fault current at MDP-1 is at most about ${fmtN(isc, 1)} kA (infinite source). Request Eversource's fault-current letter before specifying equipment ratings.`, sl.name);
+  F('risk', 'electrical', 'The customer SLD is a concept drawing marked "not for construction"; feeders, protective devices, short-circuit duty and spare capacity are all "field verify". Verify on site before the plan set is finalized.', sl.name);
+  F('good', 'load', `Demand charges are $${fmtN(demandCost)} of the $${fmtN(b.total)} ${b.period} bill (${fmtN((demandCost / b.total) * 100)}%), on ${b.rate}.`, b.name);
+  const listPeak = ((EQ.ADDR[s.slug] || {}).facility || {}).peak_kw;
+  if (listPeak && Math.abs(listPeak - pk[1]) > 10) F('info', 'load', `The facility list's ${fmtN(listPeak, 1)} kW peak (15-min interval) is higher than the ${pk[1]} kW billed maximum. Billing may use a different demand interval; size from the interval file.`, `${b.name} · EQORE facility list`);
+
+  s.activity.unshift({ t: `${sl.date}T15:00:00`, who: 'Facility contact', text: `Sent existing single-line diagram ${sl.drawing}` }, { t: `${b.date}T14:00:00`, who: 'Facility contact', text: `Sent ${b.period} Eversource bill (${b.rate})` });
+};
+
 EQ.buildLeadSites = function (existingIds) {
   return EQ.readLeads().filter((l) => !(existingIds || new Set()).has(l.id) && l.geo && l.geo.lat != null).map((lead) => {
     const s = EQ.leadSite(lead);
@@ -661,6 +736,7 @@ EQ.buildSites = function () {
     s.activity = EQ.buildActivity(s);
     EQ.applyAddressRecord(s);
     EQ.applyUtilityRecord(s);
+    EQ.applyCustomerDocs(s);
     return s;
   });
 };
