@@ -56,32 +56,38 @@
     if (dp.requiresSignoff && !dp.verified) return 'review';
     return 'ok';
   }
+  const isReq = (d) => EQ.isRequired(d);
+  // Progress counts required inputs only; optional inputs are tracked separately and never hold progress back.
   function sectionScores(s) {
     return EQ.SECTIONS.map((p) => {
-      const dps = s.dps.filter((d) => d.sec === p.key);
-      const earned = dps.filter((d) => dpStatus(d) === 'ok').reduce((a, d) => a + d.pts, 0);
-      return Object.assign({}, p, { earned, dps, done: dps.filter((d) => dpStatus(d) === 'ok').length });
+      const all = s.dps.filter((d) => d.sec === p.key);
+      const req = all.filter(isReq), opt = all.filter((d) => !isReq(d));
+      const ok = (d) => dpStatus(d) === 'ok';
+      const max = req.reduce((a, d) => a + d.pts, 0), earned = req.filter(ok).reduce((a, d) => a + d.pts, 0);
+      return Object.assign({}, p, { all, dps: req, opt, max, earned, done: req.filter(ok).length, optDone: opt.filter((d) => d.value != null).length });
     });
   }
   const secName = (k) => (EQ.SECTIONS.find((x) => x.key === k) || EQ.FIELD).name;
-  const score = (s) => sectionScores(s).reduce((a, p) => a + p.earned, 0);
+  const score = (s) => { const ps = sectionScores(s), m = ps.reduce((a, p) => a + p.max, 0); return m ? Math.round((100 * ps.reduce((a, p) => a + p.earned, 0)) / m) : 0; };
+  const reqOpen = (s) => s.dps.filter((d) => isReq(d) && dpStatus(d) !== 'ok');
   const fieldActive = (s) => EQ.stageIdx(s.stage) >= EQ.stageIdx(EQ.FIELD.from);
   const relevant = (s) => s.dps.filter((d) => d.sec !== 'field' || fieldActive(s));
   const openItems = (s) => relevant(s).filter((d) => dpStatus(d) !== 'ok');
   const criticalOpen = (s) => relevant(s).filter((d) => d.severity === 'critical' && ['missing', 'requested'].includes(dpStatus(d)));
   /* Intake steps (lead form -> site data collection). Steps 3 and 4 follow the data; 1 and 2 are set by the team. */
-  const openBy = (s, owner) => relevant(s).filter((d) => d.owner === owner && ['missing', 'requested'].includes(dpStatus(d)));
+  const openBy = (s, owner, all) => relevant(s).filter((d) => d.owner === owner && (all || isReq(d)) && ['missing', 'requested'].includes(dpStatus(d)));
   // Any data from the customer: an upload, an interval file, or a facility item entered from the customer (call, email).
   const hasCustomerData = (s) => !!s.interval || s.files.some((f) => f.origin === 'Customer-provided')
     || s.dps.some((d) => d.srcType === 'customer' || (d.owner === 'fm' && d.srcType === 'manual' && d.value != null));
   function intakeIdx(s) {
     if (s.stage && s.stage !== 'intake') return EQ.INTAKE.length; // past intake: all four steps done
-    const fromData = hasCustomerData(s) ? (openBy(s, 'fm').length ? 2 : 3) : -1;
+    // 04 is complete (index 4 = all four steps done) once every required facility input is in.
+    const fromData = hasCustomerData(s) ? (openBy(s, 'fm').length ? 2 : 4) : -1;
     return Math.max(s.intake ?? 0, fromData);
   }
   function nextAction(s) {
     const i = intakeIdx(s), fm = openBy(s, 'fm').length, ut = openBy(s, 'utility').length;
-    const rv = relevant(s).filter((d) => dpStatus(d) === 'review').length, pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+    const rv = relevant(s).filter((d) => isReq(d) && dpStatus(d) === 'review').length, pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
     const others = [rv && `${rv} to confirm`, ut && `${ut} from ${s.utility}`].filter(Boolean);
     if (s.stage !== 'intake') {
       const g = gateChecks(s);
@@ -95,13 +101,13 @@
     if (fm) return { text: `Waiting on facility · ${pl(fm, 'item')}`, more: others };
     if (rv) return { text: `Confirm ${pl(rv, 'value')}`, more: others.slice(1) };
     if (ut) return { text: `Request ${pl(ut, 'item')} from ${s.utility}`, more: [] };
-    return { text: 'Ready for design review', more: [], done: true };
+    return { text: 'Ready to advance to Proposal', more: [], done: true };
   }
   const stageIdx = (s) => EQ.stageIdx(s.stage);
   function health(s) {
     if (s.stage === 'operate') return 'live';
     if (criticalOpen(s).length) return 'crit';
-    return score(s) >= 85 ? 'ok' : 'gap';
+    return score(s) === 100 ? 'ok' : 'gap';
   }
   const HEALTH = {
     live: { label: 'Operating', cls: 'ink' },
@@ -125,13 +131,8 @@
     let checks = [];
     switch (s.stage) {
       case 'intake':
-        checks = [
-          { label: 'Site data collection completed (step 04)', pass: intakeIdx(s) === 3 },
-          { label: '12 months of 15-min interval data', pass: ok('interval') },
-          { label: 'Rate schedule confirmed from bill', pass: ok('tariff') },
-          { label: '12-month peak demand established', pass: ok('peakDemand') },
-          { label: 'Operating mode agreed (non-export / backup)', pass: ok('opMode') },
-        ]; break;
+        checks = s.dps.filter(isReq).map((d) => ({ label: `${d.label} confirmed`, pass: ok(d.key), key: d.key }));
+        break;
       case 'proposal':
         checks = [
           { label: 'Equipment location confirmed', pass: ok('location') },
@@ -139,7 +140,7 @@
           { label: 'Separation distances confirmed', pass: ok('setback') },
           { label: 'Fire department access reviewed', pass: ok('fire') },
           { label: 'Electrical, load and siting data confirmed', pass: secOk('elec') && secOk('load') && secOk('site') },
-          { label: 'Design readiness ≥ 85 with no blockers', pass: score(s) >= 85 && !criticalOpen(s).length },
+          { label: 'All inputs required for project development confirmed', pass: score(s) === 100 && !criticalOpen(s).length },
         ]; break;
       case 'design':
         checks = [
@@ -182,13 +183,15 @@
   const tag = (cls, text) => `<span class="tag ${cls}">${esc(text)}</span>`;
   function statusTag(d) {
     const st = dpStatus(d);
+    if (!isReq(d) && (st === 'missing' || st === 'requested')) return tag('muted', `Optional now · ${EQ.LATER[d.key] || 'later'}`);
+    if (isReq(d) && st === 'missing') return tag('crit', 'Required · missing');
     if (st === 'ok') return tag(d.verified ? 'ok' : 'muted', d.verified ? 'Confirmed' : 'Unconfirmed');
     if (st === 'review') return tag('ok', 'Needs confirmation');
     if (st === 'requested') return tag('gap', `Requested ${relTime(d.rfi.at)}`);
     return tag(d.severity === 'critical' ? 'crit' : 'gap', d.severity === 'critical' ? 'Missing — blocks next step' : 'Missing');
   }
   function segbar(s) {
-    return `<div class="segbar">${sectionScores(s).map((p) => {
+    return `<div class="segbar">${sectionScores(s).filter((p) => p.max).map((p) => {
       const r = p.earned / p.max; const col = r === 1 ? 'var(--steel)' : r >= 0.7 ? '#b07a20' : 'var(--alert)';
       return `<div style="flex:${p.max}" title="${p.name}: ${p.done}/${p.dps.length}"><i style="width:${r * 100}%;background:${col}"></i></div>`;
     }).join('')}</div>`;
@@ -200,7 +203,7 @@
   const ficon = (t) => `<span class="ficon">${ftype[t] || 'FILE'}</span>`;
   const stageLabel = (k) => EQ.STAGES[k].label;
   // Where a site is now: its intake step while in intake, otherwise its delivery step.
-  const stepLabel = (s) => (s.stage === 'intake' ? EQ.INTAKE[intakeIdx(s)].label : EQ.STAGES[s.stage].label);
+  const stepLabel = (s) => (s.stage === 'intake' ? (EQ.INTAKE[intakeIdx(s)] || { label: 'Site data collection completed' }).label : EQ.STAGES[s.stage].label);
 
   /* ---------------------------------------------------------------- toast & modal */
   function toast(msg) {
@@ -332,7 +335,7 @@
         <input data-role="mobile-search" type="search" value="${esc(f.q)}" placeholder="Search" class="field h-8 px-2.5 text-[13px] sm:hidden w-full" />
         <button class="btn btn-secondary btn-sm" data-action="export-directory">Export CSV</button></div>
       <div class="overflow-x-auto"><table class="tbl w-full min-w-[1100px]">
-        <thead><tr>${th('name', 'Facility')}${th('intake', 'Needs action')}${th('sector', 'Type · size')}${th('kwh', 'Grid use')}<th>Overview</th>${th('risks', 'Risks')}${th('score', 'Design readiness')}</tr></thead>
+        <thead><tr>${th('name', 'Facility')}${th('intake', 'Needs action')}${th('sector', 'Type · size')}${th('kwh', 'Grid use')}<th>Overview</th>${th('risks', 'Risks')}${th('score', 'Ready for development')}</tr></thead>
         <tbody>${list.length ? list.map(rowHTML).join('') : `<tr><td colspan="7" class="!py-12 text-center text-mute">No facilities match. <button class="link" data-action="clear-all-filters">Clear filters</button></td></tr>`}</tbody>
       </table></div>`;
   }
@@ -348,7 +351,7 @@
     const a = nextAction(s), st = EQ.INTAKE[intakeIdx(s)];
     return `<div class="text-[13px] ${a.done ? 'text-steel' : 'text-ink'}">${esc(a.text)}</div>
       ${a.more.length ? `<div class="text-[11.5px] text-ink2">${esc(a.more.join(' · '))}</div>` : ''}
-      <div class="text-[11.5px] text-mute mt-0.5">${st ? `<span class="num">${st.n}</span> ${esc(st.label)}` : `Delivery · ${esc(EQ.STAGES[s.stage].label)}`}</div>`;
+      <div class="text-[11.5px] text-mute mt-0.5">${st ? `<span class="num">${st.n}</span> ${esc(st.label)}` : s.stage === 'intake' ? '<span class="num">04</span> Site data collection completed' : `Delivery · ${esc(EQ.STAGES[s.stage].label)}`}</div>`;
   }
   function rowHTML(s) {
     const sc = score(s), h = health(s), l = latestKwh(s), risks = s.findings.filter((f) => f.sev === 'risk').length;
@@ -359,7 +362,7 @@
       <td><div class="num">${l ? fmt(l.kwh / 1e6, 2) + ' GWh' : '—'}<div class="text-[11.5px] text-mute">${l ? l.year : ''}</div></div></td>
       <td class="min-w-[220px]">${overviewDots(s)}</td>
       <td class="num ${risks ? 'text-alert' : 'text-mute'}">${risks}</td>
-      <td class="min-w-[180px]"><div class="flex items-baseline justify-between mb-1.5"><span class="num text-[15px] text-ink">${sc}</span>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>${segbar(s)}</td>
+      <td class="min-w-[180px]"><div class="flex items-baseline justify-between mb-1.5"><span class="num text-[15px] text-ink">${sc}%</span>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>${segbar(s)}</td>
     </tr>`;
   }
   /* ---------------------------------------------------------------- map */
@@ -885,13 +888,15 @@
   function renderScore(s) {
     const sc = score(s), h = health(s), g = gateChecks(s);
     $('#site-score').innerHTML = `
-      <div class="flex items-baseline justify-between"><div class="eyebrow">Design readiness</div>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>
-      <div class="flex items-baseline gap-2 mt-2"><span class="display text-[54px] leading-none num">${sc}</span><span class="text-ink2 text-[13px]">/ 100</span>
+      <div class="flex items-baseline justify-between"><div class="eyebrow">Ready for project development</div>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>
+      <div class="flex items-baseline gap-2 mt-2"><span class="display text-[54px] leading-none num">${sc}%</span><span class="text-ink2 text-[13px]">of required inputs</span>
         <button class="link text-[12px] ml-auto" data-action="score-breakdown">Method</button></div>
-      <div class="mt-4 space-y-2.5">${sectionScores(s).map((p) => { const r = p.earned / p.max; const col = r === 1 ? 'var(--steel)' : r >= 0.7 ? '#b07a20' : 'var(--alert)';
+      <div class="text-[11.5px] text-mute mt-1">Required inputs only. Optional inputs don't count toward progress.</div>
+      <div class="mt-4 space-y-2.5">${sectionScores(s).filter((p) => p.max).map((p) => { const r = p.earned / p.max; const col = r === 1 ? 'var(--steel)' : r >= 0.7 ? '#b07a20' : 'var(--alert)';
         return `<button class="w-full text-left group" data-action="scroll-section" data-p="${p.key}">
           <div class="flex items-baseline justify-between text-[12.5px]"><span class="text-ink2 group-hover:text-ink">${p.name}</span><span class="num text-ink">${p.done}/${p.dps.length}</span></div>
-          <div class="h-[3px] bg-line2 mt-1"><div class="h-full" style="width:${r * 100}%;background:${col}"></div></div></button>`; }).join('')}</div>
+          <div class="h-[3px] bg-line2 mt-1"><div class="h-full" style="width:${r * 100}%;background:${col}"></div></div></button>`; }).join('')}
+        <div class="flex items-baseline justify-between text-[12px] text-mute pt-1"><span>Optional now (all sections)</span><span class="num">${sectionScores(s).reduce((a, p) => a + p.optDone, 0)}/${sectionScores(s).reduce((a, p) => a + p.opt.length, 0)} captured</span></div></div>
       <div class="mt-5 pt-4 border-t border-line2">
         ${g.next ? `<div class="text-[12px] text-mute">Next: ${esc(stageLabel(g.next))}</div>
           <div class="text-[12.5px] text-ink mt-0.5">${g.checks.filter((c) => c.pass).length} of ${g.checks.length} gate checks met</div>
@@ -950,20 +955,21 @@
     const open = p.dps.length - p.done;
     $(`#section-head-${key}`).innerHTML = `
       <h3 class="h-section flex-1 !text-[19px]">${p.name}</h3>
-      <span class="text-[12px] ${open ? 'text-ochre' : 'text-mute'}">${open ? `${open} open` : 'Complete'}</span>
-      <span class="text-[12px] text-mute num">${p.done}/${p.dps.length}</span>`;
-    $(`#section-body-${key}`).innerHTML = p.dps.map((d) => dpRow(s, d)).join('');
+      ${p.dps.length ? `<span class="text-[12px] ${open ? 'text-ochre' : 'text-steel'}">${open ? `${open} required open` : 'Required complete'}</span>
+      <span class="text-[12px] text-mute num">${p.done}/${p.dps.length} required</span>` : '<span class="text-[12px] text-mute">Nothing required yet</span>'}`;
+    $(`#section-body-${key}`).innerHTML = (p.dps.length ? `<div class="px-5 pt-3 pb-1 eyebrow">Required for ${EQ.REQUIRED_FOR}</div>${p.dps.map((d) => dpRow(s, d)).join('')}` : '')
+      + (p.opt.length ? `<div class="opt-block"><div class="px-5 pt-4 pb-1 flex items-baseline gap-3"><span class="eyebrow !text-mute">Optional now</span><span class="text-[11.5px] text-mute">Helpful later; doesn't count toward progress</span><span class="ml-auto text-[11.5px] text-mute num">${p.optDone}/${p.opt.length} captured</span></div>${p.opt.map((d) => dpRow(s, d)).join('')}</div>` : '');
   }
   function dpRow(s, d) {
     const st = dpStatus(d);
     const crit = d.severity === 'critical' && (st === 'missing' || st === 'requested');
-    const cls = st === 'ok' ? '' : crit ? 'is-critical' : st === 'review' ? 'is-review' : 'is-gap';
+    const cls = (st === 'ok' ? '' : crit || (isReq(d) && st === 'missing') ? 'is-critical' : st === 'review' ? 'is-review' : 'is-gap') + (isReq(d) ? '' : ' is-optional');
     const file = d.file && s.files.find((f) => f.key === d.file);
     const src = file ? `<button class="src" data-action="open-file" data-file="${file.id}">${ico(srcIcon[d.srcType] || 'file')}<span class="truncate">${esc(d.src)}</span></button>`
       : d.src ? `<button class="src" data-action="source" data-src="${esc(d.src)}" data-title="${esc(d.label)}" ${d.srcUrl ? `data-url="${esc(d.srcUrl)}"` : ''}>${ico(srcIcon[d.srcType] || 'file')}<span class="truncate">${esc(d.src)}</span></button>` : '';
     let main, right;
     if (st === 'missing' || st === 'requested') {
-      main = `<div class="text-[13.5px] text-ink2">Needed: ${esc(d.ask)}</div>`;
+      main = `<div class="text-[13.5px] text-ink2">${isReq(d) ? 'Needed' : `For ${esc(EQ.LATER[d.key] || 'later')}`}: ${esc(d.ask)}</div>`;
       right = d.owner === 'fm'
         ? `<div class="flex gap-1.5">${st === 'missing' ? `<button class="btn btn-secondary btn-xs" data-action="open-rfi" data-dp="${d.key}">Text request</button>` : ''}<label class="btn btn-ghost btn-xs cursor-pointer">Upload<input type="file" class="hidden" data-upload="${d.key}" /></label></div>`
         : `<button class="btn btn-secondary btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`;
@@ -979,8 +985,8 @@
     const d = s.dps.find((x) => x.key === key), st = dpStatus(d);
     const file = d.file && s.files.find((f) => f.key === d.file);
     openModal({
-      title: esc(d.label), subtitle: `${secName(d.sec) || EQ.FIELD.name} · weight ${d.pts}${d.severity ? ` · ${d.severity === 'critical' ? 'blocks next step' : 'open'}` : ''}`, size: 'max-w-3xl',
-      body: `<div class="text-[11.5px] text-mute">Value</div><div class="text-[16px] text-ink num mt-0.5">${d.value != null ? esc(d.value) : '—'}</div>
+      title: esc(d.label), subtitle: `${secName(d.sec) || EQ.FIELD.name} · ${isReq(d) ? `Required for ${EQ.REQUIRED_FOR}` : `Optional now · needed for ${EQ.LATER[d.key] || 'later steps'}`}`, size: 'max-w-3xl',
+      body: `${isReq(d) ? `<div class="text-[12.5px] text-ink2 border-l-2 border-ink pl-3 mb-4"><span class="text-ink">Why it's required:</span> ${esc(EQ.REQUIRED[d.key])}</div>` : ''}<div class="text-[11.5px] text-mute">Value</div><div class="text-[16px] text-ink num mt-0.5">${d.value != null ? esc(d.value) : '—'}</div>
         <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[12px] text-ink2">${statusTag(d)}${d.value != null ? `<span>${confLabel[d.conf] || ''}</span>` : ''}<span>Owner: ${{ fm: 'facility', utility: 'utility (EQORE requests)' }[d.owner] || 'EQORE'}</span>${d.verified && d.verifiedBy ? `<span>Confirmed by ${esc(d.verifiedBy)}</span>` : ''}</div>
         <div class="eyebrow mt-6 mb-2">Primary source</div>
         ${file ? `<button class="w-full flex items-center gap-3 p-3 border border-line hover:border-ink text-left mb-2" data-action="open-file" data-file="${file.id}">${ficon(file.type)}<span class="min-w-0 flex-1"><span class="block text-[13px] text-ink font-mono truncate">${esc(file.name)}</span><span class="block text-[11.5px] text-mute">${esc(file.origin)}</span></span><span>→</span></button>` : ''}
@@ -1044,25 +1050,29 @@
   /* ----------------------------------------------------- facility requests */
   function renderRequests(s) {
     const rel = relevant(s);
-    const fmItems = rel.filter((d) => d.owner === 'fm' && ['missing', 'requested'].includes(dpStatus(d)));
-    const eqItems = rel.filter((d) => d.owner === 'eqore' && ['missing', 'requested'].includes(dpStatus(d)));
-    const utItems = rel.filter((d) => d.owner === 'utility' && ['missing', 'requested'].includes(dpStatus(d)));
-    const review = rel.filter((d) => dpStatus(d) === 'review');
+    const openSt = (d) => ['missing', 'requested'].includes(dpStatus(d));
+    const fmItems = rel.filter((d) => isReq(d) && d.owner === 'fm' && openSt(d));
+    const eqItems = rel.filter((d) => isReq(d) && d.owner === 'eqore' && openSt(d));
+    const utItems = rel.filter((d) => isReq(d) && d.owner === 'utility' && openSt(d));
+    const review = rel.filter((d) => isReq(d) && dpStatus(d) === 'review');
+    const later = rel.filter((d) => !isReq(d) && d.sec !== 'field' && dpStatus(d) !== 'ok');
     const row = (d, ctl) => `<li class="px-5 py-2.5 border-t border-line2 flex items-start gap-3 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}">
         <div class="min-w-0 flex-1"><div class="text-[13px] text-ink leading-snug">${esc(['fm', 'utility'].includes(d.owner) && dpStatus(d) !== 'review' ? d.ask : d.label)}</div><div class="mt-0.5">${statusTag(d)}</div></div>
         <div data-stop class="shrink-0 pt-0.5 flex items-center gap-1.5">${ctl}</div></li>`;
     const group = (title, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-2 text-[11.5px] text-mute">${title}</div><ul>${items.map((d) => row(d, ctl(d))).join('')}</ul>` : '';
     $('#site-requests').innerHTML = `
-      <div class="panel-head"><div class="eyebrow flex-1">Open items</div><span class="text-[11px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length}</span></div>
+      <div class="panel-head"><div class="eyebrow flex-1">Required open items</div><span class="text-[11px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length}</span></div>
       ${group('From the facility', fmItems, (d) => `<label class="btn btn-ghost btn-xs cursor-pointer">Upload<input type="file" class="hidden" data-upload="${d.key}" /></label>${dpStatus(d) === 'missing' ? `<input type="checkbox" class="w-4 h-4 accent-[#06162b]" data-rfi-pick="${d.key}" checked aria-label="Include in text request" />` : ''}`)}
       ${fmItems.some((d) => dpStatus(d) === 'missing') ? `<div class="px-5 py-3"><button class="btn btn-primary w-full justify-between" data-action="open-rfi">Text the facility for checked items<span>→</span></button></div>` : ''}
       ${group('From the utility (EQORE requests)', utItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}
       ${group('EQORE', eqItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}
       ${group('Needs engineer confirmation', review, (d) => `<button class="toggle" role="switch" aria-checked="false" aria-label="Confirm ${esc(d.label)}" data-action="toggle-verify" data-dp="${d.key}"></button>`)}
-      ${!fmItems.length && !eqItems.length && !utItems.length && !review.length ? `<div class="px-5 py-6 text-[13px] text-mute">No open items.</div>` : ''}`;
+      ${!fmItems.length && !eqItems.length && !utItems.length && !review.length ? `<div class="px-5 py-6 text-[13px] text-steel">All required inputs are in and confirmed.</div>` : ''}
+      ${later.length ? `<details class="border-t border-line2 opacity-70"><summary class="px-5 py-3 text-[12px] text-mute cursor-pointer">Optional now · ${later.length} for later steps</summary>
+        <ul>${later.map((d) => `<li class="px-5 py-2 border-t border-line2 flex items-baseline gap-3 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}"><span class="text-[12.5px] text-ink2 flex-1">${esc(d.label)}</span><span class="text-[11px] text-mute">${esc(EQ.LATER[d.key] || '')}</span></li>`).join('')}</ul></details>` : ''}`;
   }
   function openRfiModal(s, onlyKey) {
-    const gaps = relevant(s).filter((d) => d.owner === 'fm' && dpStatus(d) === 'missing');
+    const gaps = relevant(s).filter((d) => d.owner === 'fm' && dpStatus(d) === 'missing' && (isReq(d) || d.key === onlyKey));
     if (!gaps.length) { toast('No facility items are open.'); return; }
     const picked = new Set(onlyKey ? [onlyKey] : gaps.filter((d) => { const cb = $(`[data-rfi-pick="${d.key}"]`); return !cb || cb.checked; }).map((d) => d.key));
     if (!picked.size) gaps.forEach((d) => picked.add(d.key));
@@ -1153,11 +1163,13 @@
   }
   function openScoreBreakdown(s) {
     openModal({
-      title: 'Design readiness', subtitle: 'Weighted score of the site data needed for the permit plan set and interconnection application.', size: 'max-w-3xl',
-      body: `<p class="text-[13px] text-ink2 mb-4">A data point counts when captured from a qualifying source. Low-confidence reads and manual entries count once an engineer confirms them. The gate from ${stageLabel('proposal')} to ${stageLabel('design')} requires ≥ 85 and no blocking items.</p>
-        <table class="tbl w-full"><thead><tr><th>Data point</th><th>Section</th><th>Status</th><th class="text-right">Weight</th></tr></thead><tbody>
-        ${sectionScores(s).map((p) => p.dps.map((d) => `<tr data-action="open-dp" data-dp="${d.key}"><td>${esc(d.label)}</td><td class="text-ink2 text-[12px]">${esc(p.name)}</td><td>${statusTag(d)}</td><td class="text-right num">${dpStatus(d) === 'ok' ? d.pts : 0} / ${d.pts}</td></tr>`).join('')).join('')}
-        <tr class="!cursor-default"><td colspan="3">Total</td><td class="text-right num">${score(s)} / 100</td></tr></tbody></table>`,
+      title: 'Ready for project development', subtitle: 'Weighted share of the required inputs that are confirmed.', size: 'max-w-3xl',
+      body: `<p class="text-[13px] text-ink2 mb-4">Only the ${Object.keys(EQ.REQUIRED).length} inputs required to move a lead into ${EQ.REQUIRED_FOR} count. An input counts once it is captured and, for customer or low-confidence values, confirmed by an engineer. Optional inputs are listed below with the step that needs them; they never hold progress back.</p>
+        <table class="tbl w-full"><thead><tr><th>Required input</th><th>Why</th><th>Status</th><th class="text-right">Weight</th></tr></thead><tbody>
+        ${sectionScores(s).map((p) => p.dps.map((d) => `<tr data-action="open-dp" data-dp="${d.key}"><td>${esc(d.label)}<div class="text-[11px] text-mute">${esc(p.name)}</div></td><td class="text-ink2 text-[12px] max-w-[320px]">${esc(EQ.REQUIRED[d.key])}</td><td>${statusTag(d)}</td><td class="text-right num">${dpStatus(d) === 'ok' ? d.pts : 0} / ${d.pts}</td></tr>`).join('')).join('')}
+        <tr class="!cursor-default"><td colspan="3">Progress</td><td class="text-right num">${score(s)}%</td></tr></tbody></table>
+        <div class="eyebrow mt-6 mb-2">Optional now</div>
+        <table class="tbl w-full opacity-70"><tbody>${sectionScores(s).map((p) => p.opt.map((d) => `<tr data-action="open-dp" data-dp="${d.key}"><td>${esc(d.label)}</td><td class="text-ink2 text-[12px]">Needed for ${esc(EQ.LATER[d.key] || 'later steps')}</td><td>${d.value != null ? tag('muted', 'Captured') : tag('muted', 'Not yet')}</td></tr>`).join('')).join('')}</tbody></table>`,
     });
   }
 
@@ -1370,7 +1382,7 @@
       case 'addr-section': if (s) { S.addrSection = S.addrSection === el.dataset.sec || (S.addrSection == null && el.dataset.sec === [...new Set(EQ.addrDoc(s).record.fields.map((f) => f.section))][0]) ? '' : el.dataset.sec; renderAddr(s); } break;
       case 'set-intake': if (s) {
         const i = +el.dataset.i; s.intake = i; log(s, `Step set to ${EQ.INTAKE[i].n} ${EQ.INTAKE[i].label}`); persist();
-        $('#site-intake').innerHTML = intakeHTML(s); toast(`${esc(s.name)} · ${esc(EQ.INTAKE[intakeIdx(s)].label)}`);
+        $('#site-intake').innerHTML = intakeHTML(s); toast(`${esc(s.name)} · ${esc(stepLabel(s))}`);
       } break;
       case 'stage-filter':
         S.filters.stage = S.filters.stage === el.dataset.stage && el.dataset.stage !== 'all' ? 'all' : el.dataset.stage;
@@ -1472,7 +1484,7 @@
   function exportDirectory() {
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [['Facility', 'Address', 'APN', 'Type', 'Floor area sf', 'Latest grid kWh', 'Year', 'Risks', 'Design readiness', 'Step', 'Needs action'].join(',')]
-      .concat(sortedSites(filteredSites()).map((s) => { const l = latestKwh(s) || {}; return [s.name, `${s.address}, ${s.city}`, s.apn, s.sector, s.floorArea, l.kwh, l.year, s.findings.filter((f) => f.sev === 'risk').length, score(s), EQ.INTAKE[intakeIdx(s)].label, nextAction(s).text].map(q).join(','); }));
+      .concat(sortedSites(filteredSites()).map((s) => { const l = latestKwh(s) || {}; return [s.name, `${s.address}, ${s.city}`, s.apn, s.sector, s.floorArea, l.kwh, l.year, s.findings.filter((f) => f.sev === 'risk').length, score(s), stepLabel(s), nextAction(s).text].map(q).join(','); }));
     downloadBlob('eqore_leads.csv', rows.join('\n')); toast('Exported');
   }
   const search = $('#global-search');

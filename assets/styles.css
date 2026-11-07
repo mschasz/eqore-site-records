@@ -174,3 +174,9 @@ input[type="range"].eq-range::-moz-range-thumb { width: 12px; height: 12px; bord
 .snap-partial { box-shadow: inset 0 3px 0 #b07a20; }
 .snap-unknown { box-shadow: inset 0 3px 0 var(--line); }
 .snap-risk { box-shadow: inset 0 3px 0 var(--alert); }
+
+/* Optional-now inputs: grayed below the required ones */
+.opt-block { background: var(--paper); border-top: 1px solid var(--line2); }
+.dp-row.is-optional { opacity: .55; }
+.dp-row.is-optional:hover { opacity: 1; }
+.dp-row.is-optional.is-gap, .dp-row.is-optional.is-critical { box-shadow: inset 2px 0 0 var(--line); }

@@ -248,6 +248,27 @@ EQ.DP_TEMPLATE = [
   { key: 'cxtests', sec: 'field', pts: 0, label: 'Commissioning tests', owner: 'eqore', ask: 'Commissioning test list' },
 ];
 
+/* Inputs required to move a lead into project development (gate: Site intake -> Proposal).
+   Everything else is optional now and is collected at the step named in EQ.LATER. */
+EQ.REQUIRED_FOR = 'project development';
+EQ.REQUIRED = {
+  voltage: 'Sets the inverter and PCS voltage and whether a step-up or step-down transformer is needed.',
+  mainBreaker: 'The main breaker and service size cap how much battery power can connect without a service upgrade.',
+  spareBreaker: 'Where the battery ties in (spare breaker, bus space or supply side) decides feasibility and cost.',
+  onsiteGen: 'Existing PV, storage or generators change the interconnection track and the 120% bus calculation.',
+  opMode: 'Non-export peak shaving vs backup sets the system architecture and the interconnection track.',
+  peakDemand: 'Peak demand sets how much power the battery must shave and the system size.',
+  tariff: 'The rate schedule sets the demand charges the battery offsets and the program eligibility.',
+  interval: '15-minute interval data is needed to size power and energy and to model savings.',
+  location: 'There has to be a place to put the equipment before a system can be proposed.',
+};
+EQ.LATER = {
+  transformer: 'Design & permitting', faultCurrent: 'Design & permitting', metering: 'Design & permitting', incentive: 'Proposal',
+  setback: 'Design & permitting', fire: 'Design & permitting', vehicle: 'Design & permitting', ventilation: 'Design & permitting',
+  feeder: 'Utility interconnection', codes: 'Design & permitting', permits: 'Design & permitting', interconnect: 'Utility interconnection', ahjPreApp: 'Design & permitting',
+};
+EQ.isRequired = (d) => Object.prototype.hasOwnProperty.call(EQ.REQUIRED, d.key);
+
 EQ.benchLatest = (s) => { const b = (EQ.REC[s.apn] || { benchmark: [] }).benchmark.filter((x) => x.kwh); return b.length ? b[b.length - 1] : null; };
 EQ.peakEstimate = (s) => {
   const l = EQ.benchLatest(s); if (!l) return null;
