@@ -80,7 +80,6 @@
   const hasCustomerData = (s) => !!s.interval || s.files.some((f) => f.origin === 'Customer-provided')
     || s.dps.some((d) => d.srcType === 'customer' || (d.owner === 'fm' && d.srcType === 'manual' && d.value != null));
   function intakeIdx(s) {
-    if (s.stage && s.stage !== 'intake') return EQ.INTAKE.length; // past intake: all four steps done
     // 04 is complete (index 4 = all four steps done) once every required facility input is in.
     // Progress follows the data only; nobody sets it by hand.
     //  Any data on the project (customer files or values, public records, the address lookup) marks 01 and 02 done.
@@ -363,7 +362,7 @@
   function intakeHTML(s) {
     const cur = intakeIdx(s), a = nextAction(s);
     return `<div class="tracker" role="list" aria-label="Intake progress, set by the data on file">${EQ.INTAKE.map((t, i) => `<div role="listitem" class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="n num">${t.n}${i < cur ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div><div class="l">${esc(t.label)}</div></div>`).join('')}</div>
-      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-3 text-[12px] text-ink2"><span>${s.stage !== 'intake' ? `Intake complete · now in <span class="text-ink">${esc(EQ.STAGES[s.stage].label)}</span> · ` : ''}Next: <span class="text-ink">${esc(a.text)}</span>${a.more.length ? ` · ${esc(a.more.join(' · '))}` : ''}</span>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[12px] text-ink2">
         ${reqOpen(s).length ? `<button class="btn btn-secondary btn-xs" data-action="next-steps">What to do next<span>→</span></button>` : ''}<span class="text-[11px] text-mute ml-auto">Progress follows the data on file.</span></div>`;
   }
   function actionCell(s) {
@@ -1037,9 +1036,9 @@
         <button class="link text-[12px] ml-auto" data-action="score-breakdown">Method</button></div>
       <div class="text-[11.5px] text-mute mt-1">Required inputs only. Optional inputs don't count toward progress.</div>
       <div class="mt-4 space-y-2.5">${sectionScores(s).filter((p) => p.max).map((p) => { const r = p.earned / p.max; const col = r === 1 ? 'var(--steel)' : r >= 0.7 ? '#b07a20' : 'var(--alert)';
-        return `<button class="w-full text-left group" data-action="scroll-section" data-p="${p.key}">
-          <div class="flex items-baseline justify-between text-[12.5px]"><span class="text-ink2 group-hover:text-ink">${p.name}</span><span class="num text-ink">${p.done}/${p.dps.length}</span></div>
-          <div class="h-[3px] bg-line2 mt-1"><div class="h-full" style="width:${r * 100}%;background:${col}"></div></div></button>`; }).join('')}
+        return `<button class="sec-link group" data-action="scroll-section" data-p="${p.key}" title="Go to ${esc(p.name)}">
+          <div class="flex items-baseline gap-2 text-[13px]"><span class="text-ink underline decoration-line underline-offset-4 group-hover:decoration-ink">${p.name}</span><span class="ml-auto num text-ink2">${p.done}/${p.dps.length}</span><span class="text-mute group-hover:text-ink transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span></div>
+          <div class="h-[3px] bg-line2 mt-1.5"><div class="h-full" style="width:${r * 100}%;background:${col}"></div></div></button>`; }).join('')}
         <div class="flex items-baseline justify-between text-[12px] text-mute pt-1"><span>Optional now (all sections)</span><span class="num">${sectionScores(s).reduce((a, p) => a + p.optDone, 0)}/${sectionScores(s).reduce((a, p) => a + p.opt.length, 0)} captured</span></div></div>
       <div class="mt-5 pt-4 border-t border-line2">
         ${g.next ? `<div class="text-[12px] text-mute">Next: ${esc(stageLabel(g.next))}</div>
