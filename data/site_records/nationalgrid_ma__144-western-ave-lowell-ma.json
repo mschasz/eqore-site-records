@@ -1,0 +1,363 @@
+{
+  "schema": "eqore.site_record/v1",
+  "generated_at": "2026-11-07T22:11:05+00:00",
+  "input": {
+    "address": "144 Western Ave, Lowell, MA",
+    "utility": "nationalgrid_ma"
+  },
+  "site": {
+    "address": {
+      "value": "144 WESTERN AVE, LOWELL, MA, 01851",
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=144+Western+Ave%2C+Lowell%2C+MA&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high",
+      "note": "2 candidate matches; used the first."
+    },
+    "lat": {
+      "value": 42.640108354702,
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=144+Western+Ave%2C+Lowell%2C+MA&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    },
+    "lon": {
+      "value": -71.319730695762,
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=144+Western+Ave%2C+Lowell%2C+MA&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    }
+  },
+  "utility": {
+    "value": "National Grid (Massachusetts Electric)",
+    "source": {
+      "name": "Customer bill (input)",
+      "url": "input:--utility"
+    },
+    "retrieved": "2026-11-07",
+    "confidence": "high",
+    "note": "Utility is an input from the bill; never inferred."
+  },
+  "feeder": {
+    "id": {
+      "value": "05_14_13J2",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "note": "Master_CDF: district prefix + circuit designation (e.g. 05_09_1021W1); unique per feeder."
+    },
+    "name": null,
+    "substation": {
+      "value": "WORTHENSTREET13",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "division": null
+  },
+  "feeder_voltage_kv": {
+    "value": 4.16,
+    "source": {
+      "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+    },
+    "retrieved": "2026-11-07",
+    "confidence": "low",
+    "unit": "kV"
+  },
+  "phases": null,
+  "hosting_capacity": {
+    "generation": {
+      "value": 0.19284,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "load": null,
+    "computed": {
+      "value": "2026-02-06",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "note": "National Grid Updated_Date"
+    },
+    "limiting_criteria": null
+  },
+  "match": {
+    "method": "3 feeders have line sections within 150 m; the nearest (within 25 m) is reported (low confidence; see candidates).",
+    "radius_m": 150,
+    "sections": 3,
+    "candidates": [
+      {
+        "feeder": "05_14_13J2",
+        "distance_m": null,
+        "sections": 1,
+        "within_m": 25
+      },
+      {
+        "feeder": "05_14_13J6",
+        "distance_m": null,
+        "sections": 1,
+        "within_m": 150
+      },
+      {
+        "feeder": "05_14_16L5",
+        "distance_m": null,
+        "sections": 1,
+        "within_m": 150
+      }
+    ],
+    "confidence": "low",
+    "layer": "Feeder Level Data 3 Phase"
+  },
+  "extra": {
+    "HC_Available_MW_pending": {
+      "value": 0.14173,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "Total_Nameplate_Interconnected_DG_excluding_BESS_MW": {
+      "value": 0.00716,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "Total_Nameplate_Pending_excluding_BESS_MW": {
+      "value": 0.05111,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "feeder_connected_storage": {
+      "value": 0,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "feeder_pending_storage": {
+      "value": 0,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "feeder_connected_solar": {
+      "value": 0.00716,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "feeder_pending_solar": {
+      "value": 0.05111,
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "MW",
+      "data_date": "2026-02-06"
+    },
+    "Ongoing_ASO": {
+      "value": "N",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "Potential_ASO": {
+      "value": "No",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "FERC_FEEDER": {
+      "value": "No",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "CIP_FEE": {
+      "value": "No CIP Fee",
+      "source": {
+        "name": "National Grid MA System Data Portal (MA_HostingCapacity_with_DGPending)",
+        "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    }
+  },
+  "gaps": [
+    {
+      "field": "feeder.name",
+      "why": "A feeder name is how utility engineers refer to the circuit in correspondence.",
+      "how_to_collect": "Request it in the utility pre-application report.",
+      "reason": "National Grid publishes a feeder ID (Master_CDF) but no feeder name."
+    },
+    {
+      "field": "hosting_capacity.load",
+      "why": "Charging the battery adds load; this limit can cap charging power or require upgrades.",
+      "how_to_collect": "Ask the utility in a pre-application inquiry for load capacity at the service point.",
+      "reason": "National Grid's MA hosting-capacity service publishes generation hosting capacity only; no load capacity."
+    },
+    {
+      "field": "hosting_capacity.limiting_criteria",
+      "why": "The limiting criterion (thermal, voltage, protection) tells the engineer what kind of mitigation may be needed.",
+      "how_to_collect": "Request it in the utility pre-application report.",
+      "reason": "National Grid's MA service does not publish limiting criteria."
+    }
+  ],
+  "site_gaps": [
+    {
+      "field": "service_voltage_and_configuration",
+      "why": "Sets the battery inverter voltage and the transformer, if any, between battery and switchgear.",
+      "how_to_collect": "Customer photo of the nameplate label on the main switchboard or panel (voltage, e.g. 480Y/277V, and phase/wire).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "main_service_amps_and_main_breaker",
+      "why": "The main breaker and service size limit how much battery power can connect without a service upgrade.",
+      "how_to_collect": "Customer photo of the main breaker handle and its rating label (e.g. 2000 A), plus the switchboard nameplate.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "bus_rating_and_configuration",
+      "why": "The bus rating decides whether a load-side connection passes the NEC 705.12 120% rule.",
+      "how_to_collect": "Customer photo of the switchboard or panel nameplate showing the bus rating.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "single_line_diagram",
+      "why": "The SLD shows the service, existing generation and where the battery can tie in.",
+      "how_to_collect": "Ask the customer for any existing single-line diagram (often framed in the electrical room or in past permit sets).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "transformer_kva_ratio_impedance_age",
+      "why": "Transformer size and impedance set available fault current and can limit export and charging.",
+      "how_to_collect": "Request transformer kVA, voltage ratio and impedance from the utility (pre-application or service request).",
+      "who": "utility"
+    },
+    {
+      "field": "available_fault_current",
+      "why": "Equipment must be rated for the available fault current at the point of connection.",
+      "how_to_collect": "Request an available-fault-current letter from the utility for the service address.",
+      "who": "utility"
+    },
+    {
+      "field": "spare_breaker_positions_or_bus_space",
+      "why": "An open breaker position or bus space is the cheapest place to connect the battery.",
+      "how_to_collect": "Customer photo of the main switchboard front showing breaker positions and any blank spaces (doors closed is fine).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "service_point_and_meter_location",
+      "why": "The meter and service point locate the interconnection and the equipment pad.",
+      "how_to_collect": "Customer photo of the utility meter(s) and a marked-up site photo or map showing where they are.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    }
+  ],
+  "notes": [],
+  "errors": [],
+  "queries": [
+    {
+      "name": "US Census geocoder",
+      "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=144+Western+Ave%2C+Lowell%2C+MA&benchmark=Public_AR_Current&format=json"
+    },
+    {
+      "name": "National Grid Feeder Level Data 3 Phase (layer 0) within 150 m",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=true&f=json&outSR=4326"
+    },
+    {
+      "name": "National Grid Feeder Level Data 3 Phase (layer 0) within 10 m (no geometry published; distance band)",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=10&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=false&f=json"
+    },
+    {
+      "name": "National Grid Feeder Level Data 3 Phase (layer 0) within 25 m (no geometry published; distance band)",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=25&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=false&f=json"
+    },
+    {
+      "name": "National Grid Feeder Level Data 3 Phase (layer 0) within 50 m (no geometry published; distance band)",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=50&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=false&f=json"
+    },
+    {
+      "name": "National Grid Feeder Level Data 3 Phase (layer 0) within 100 m (no geometry published; distance band)",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=100&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=false&f=json"
+    },
+    {
+      "name": "National Grid Feeder Level Data 3 Phase (layer 0) within 150 m (no geometry published; distance band)",
+      "url": "https://systemdataportal.nationalgrid.com/arcgis/rest/services/MASDP/MA_HostingCapacity_with_DGPending/MapServer/0/query?where=1%3D1&geometry=-71.319730695762%2C42.640108354702&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=%2A&returnGeometry=false&f=json"
+    }
+  ],
+  "cautions": [
+    "Hosting capacity values are utility screening estimates, not an approval or a cost estimate, and they change over time.",
+    "A value of 0 can mean the feeder is already constrained, there is an upstream limit, or it was not analyzed. It does not mean the project cannot happen: the utility may require upgrades or conditions; confirm with a pre-application inquiry.",
+    "A battery both charges (acts like load) and discharges (acts like generation); both capacities matter."
+  ],
+  "site_id": "144-western-ave-lowell-ma"
+}

@@ -5,12 +5,12 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'eqore.records.v5';
+  const STORE_KEY = 'eqore.records.v8';
   const S = {
     sites: loadSites(),
     route: { view: 'pipeline', id: null },
     filters: { q: '', region: 'all', stage: 'all' },
-    sort: { key: 'stage', dir: 'asc' },
+    sort: { key: 'intake', dir: 'asc' },
     mapBase: 'streets',
     vaultFilter: 'all',
     chart: { day: 'peak', tab: 'interval', threshold: {} },
@@ -18,8 +18,10 @@
   const R = { map: null, pinLayer: null, clusterLayer: null, zoneLayer: null, baseLayers: {}, satThumb: null, loadChart: null, hoverTimer: null };
 
   function loadSites() {
-    try { const raw = localStorage.getItem(STORE_KEY); if (raw) { const v = JSON.parse(raw); if (Array.isArray(v) && v.length) return v; } } catch (e) { /* storage unavailable */ }
-    return EQ.buildSites();
+    let sites = null;
+    try { const raw = localStorage.getItem(STORE_KEY); if (raw) { const v = JSON.parse(raw); if (Array.isArray(v) && v.length) sites = v; } } catch (e) { /* storage unavailable */ }
+    sites = sites || EQ.buildSites();
+    return sites.concat(EQ.buildLeadSites(new Set(sites.map((x) => x.id)))); // new lead-form submissions
   }
   function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S.sites)); } catch (e) { /* ignore */ } }
   const site = (id) => S.sites.find((s) => s.id === id);
@@ -67,6 +69,34 @@
   const relevant = (s) => s.dps.filter((d) => d.sec !== 'field' || fieldActive(s));
   const openItems = (s) => relevant(s).filter((d) => dpStatus(d) !== 'ok');
   const criticalOpen = (s) => relevant(s).filter((d) => d.severity === 'critical' && ['missing', 'requested'].includes(dpStatus(d)));
+  /* Intake steps (lead form -> site data collection). Steps 3 and 4 follow the data; 1 and 2 are set by the team. */
+  const openBy = (s, owner) => relevant(s).filter((d) => d.owner === owner && ['missing', 'requested'].includes(dpStatus(d)));
+  // Any data from the customer: an upload, an interval file, or a facility item entered from the customer (call, email).
+  const hasCustomerData = (s) => !!s.interval || s.files.some((f) => f.origin === 'Customer-provided')
+    || s.dps.some((d) => d.srcType === 'customer' || (d.owner === 'fm' && d.srcType === 'manual' && d.value != null));
+  function intakeIdx(s) {
+    if (s.stage && s.stage !== 'intake') return EQ.INTAKE.length; // past intake: all four steps done
+    const fromData = hasCustomerData(s) ? (openBy(s, 'fm').length ? 2 : 3) : -1;
+    return Math.max(s.intake ?? 0, fromData);
+  }
+  function nextAction(s) {
+    const i = intakeIdx(s), fm = openBy(s, 'fm').length, ut = openBy(s, 'utility').length;
+    const rv = relevant(s).filter((d) => dpStatus(d) === 'review').length, pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+    const others = [rv && `${rv} to confirm`, ut && `${ut} from ${s.utility}`].filter(Boolean);
+    if (s.stage !== 'intake') {
+      const g = gateChecks(s);
+      if (!g.next) return { text: 'Operating', more: [], done: true };
+      const open = g.checks.filter((c) => !c.pass).length;
+      return g.pass ? { text: `Ready to advance to ${EQ.STAGES[g.next].label}`, more: others, done: true }
+        : { text: `${pl(open, 'gate check')} open for ${EQ.STAGES[g.next].label}`, more: others };
+    }
+    if (i === 0) return { text: 'Schedule sales call', more: others };
+    if (i === 1) return { text: `Send data request · ${pl(fm, 'item')}`, more: others };
+    if (fm) return { text: `Waiting on facility · ${pl(fm, 'item')}`, more: others };
+    if (rv) return { text: `Confirm ${pl(rv, 'value')}`, more: others.slice(1) };
+    if (ut) return { text: `Request ${pl(ut, 'item')} from ${s.utility}`, more: [] };
+    return { text: 'Ready for design review', more: [], done: true };
+  }
   const stageIdx = (s) => EQ.stageIdx(s.stage);
   function health(s) {
     if (s.stage === 'operate') return 'live';
@@ -94,8 +124,9 @@
     const nxt = EQ.STAGE_ORDER[stageIdx(s) + 1];
     let checks = [];
     switch (s.stage) {
-      case 'assessment':
+      case 'intake':
         checks = [
+          { label: 'Site data collection completed (step 04)', pass: intakeIdx(s) === 3 },
           { label: '12 months of 15-min interval data', pass: ok('interval') },
           { label: 'Rate schedule confirmed from bill', pass: ok('tariff') },
           { label: '12-month peak demand established', pass: ok('peakDemand') },
@@ -167,7 +198,9 @@
   const srcIcon = { customer: 'user', meter: 'gauge', public: 'landmark', utility: 'radio-tower', gis: 'map', spec: 'file-text', manual: 'pencil' };
   const ftype = { pdf: 'PDF', csv: 'CSV', xlsx: 'XLSX', img: 'JPG', gis: 'GEO' };
   const ficon = (t) => `<span class="ficon">${ftype[t] || 'FILE'}</span>`;
-  const stageLabel = (k) => `${EQ.STAGES[k].n} ${EQ.STAGES[k].label}`;
+  const stageLabel = (k) => EQ.STAGES[k].label;
+  // Where a site is now: its intake step while in intake, otherwise its delivery step.
+  const stepLabel = (s) => (s.stage === 'intake' ? EQ.INTAKE[intakeIdx(s)].label : EQ.STAGES[s.stage].label);
 
   /* ---------------------------------------------------------------- toast & modal */
   function toast(msg) {
@@ -233,8 +266,7 @@
   function renderStageRail() {
     const base = S.sites.filter((s) => S.filters.region === 'all' || s.region === S.filters.region);
     const cnt = (k) => (k === 'all' ? base.length : base.filter((s) => s.stage === k).length);
-    $('#stage-rail').innerHTML = `<button class="step-tab ${S.filters.stage === 'all' ? 'active' : ''}" data-action="stage-filter" data-stage="all">All projects <span class="c">${cnt('all')}</span></button>` +
-      EQ.STAGE_ORDER.map((k) => `<button class="step-tab ${S.filters.stage === k ? 'active' : ''}" data-action="stage-filter" data-stage="${k}"><span class="n">${EQ.STAGES[k].n}</span>${EQ.STAGES[k].label}<span class="c">${cnt(k)}</span></button>`).join('');
+    $('#stage-rail').innerHTML = `<button class="step-tab active" data-action="stage-filter" data-stage="all">All projects <span class="c">${cnt('all')}</span></button>`;
   }
 
   /* ---------------------------------------------------------- filtering */
@@ -245,7 +277,7 @@
   const filteredSites = () => S.sites.filter((s) => (S.filters.region === 'all' || s.region === S.filters.region) && (S.filters.stage === 'all' || s.stage === S.filters.stage) && matchesQuery(s, S.filters.q));
   function sortedSites(list) {
     const k = S.sort.key, dir = S.sort.dir === 'asc' ? 1 : -1;
-    const val = (s) => ({ name: s.name, sector: s.sector, kwh: (latestKwh(s) || {}).kwh || 0, score: score(s), stage: stageIdx(s) * 1000 - score(s), risks: s.findings.filter((f) => f.sev === 'risk').length }[k] ?? s.name);
+    const val = (s) => ({ name: s.name, sector: s.sector, kwh: (latestKwh(s) || {}).kwh || 0, score: score(s), intake: intakeIdx(s) * 1000 - score(s), risks: s.findings.filter((f) => f.sev === 'risk').length }[k] ?? s.name);
     return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x > y ? 1 : x < y ? -1 : 0) * dir; });
   }
   /* =================================================================
@@ -256,11 +288,11 @@
     if (!root.dataset.built) {
       root.innerHTML = `
         <section class="flex flex-wrap items-end gap-6">
-          <div class="min-w-0 flex-1"><div class="eyebrow mb-2">C&amp;I battery storage · EQORE operates in California, Massachusetts and New Hampshire</div><h1 class="display text-[34px] leading-tight">Projects</h1></div>
-          <p class="text-[12.5px] text-ink2 max-w-md">Leads are sourced from public energy benchmarking and permit records (DataSF, as of ${esc(EQ.ASOF)}). Click any value on a site record to see the record behind it.</p>
+          <div class="min-w-0 flex-1"><h1 class="display text-[34px] leading-tight">Projects</h1></div>
+          <p class="text-[12.5px] text-ink2 max-w-md">San Francisco leads come from DataSF benchmarking and permits; the rest from the EQORE facility list. Every site has a record built from its address alone (parcel, zoning, hazards, fire authority, utility). Click any value to see its source.</p>
         </section>
         <section class="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          <div class="xl:col-span-8 panel">
+          <div class="xl:col-span-12 panel">
             <div class="panel-head flex-wrap">
               <div class="min-w-0 flex-1"><div class="eyebrow">Map · states and counties</div></div>
               <div class="flex text-[12px] border border-line" role="group" aria-label="Region">
@@ -280,49 +312,13 @@
               </div>
             </div>
           </div>
-          <aside class="xl:col-span-4 flex flex-col gap-6">
-            <div class="panel" id="by-step"></div>
-            <div class="panel flex-1 flex flex-col min-h-0" id="queue"></div>
-          </aside>
         </section>
         <section class="panel" id="directory"></section>`;
       root.dataset.built = '1';
       initMap();
     }
-    renderByStep(); renderQueue(); renderDirectory(); refreshMap(); syncMapButtons();
+    renderDirectory(); refreshMap(); syncMapButtons();
   }
-  function renderByStep() {
-    const list = S.sites.filter((s) => S.filters.region === 'all' || s.region === S.filters.region);
-    $('#by-step').innerHTML = `
-      <div class="panel-head"><div class="eyebrow flex-1">By step</div><span class="text-[11px] text-mute">projects</span></div>
-      <div class="py-1">${EQ.STAGE_ORDER.map((k) => {
-        const ss = list.filter((s) => s.stage === k);
-        return `<button class="w-full grid grid-cols-[28px_1fr_auto] items-baseline gap-2 px-5 py-2.5 text-left hover:bg-paper ${S.filters.stage === k ? 'bg-paper' : ''}" data-action="stage-filter" data-stage="${k}">
-          <span class="text-[11px] text-mute num">${EQ.STAGES[k].n}</span><span class="text-[13px] ${S.filters.stage === k ? 'text-ink font-medium' : 'text-ink2'}">${EQ.STAGES[k].label}</span>
-          <span class="text-[12px] num text-ink2">${ss.length}</span></button>`;
-      }).join('')}</div>`;
-  }
-  function renderQueue() {
-    const list = S.sites.filter((s) => (S.filters.region === 'all' || s.region === S.filters.region) && s.stage !== 'operate');
-    const items = [];
-    list.forEach((s) => {
-      criticalOpen(s).forEach((d) => items.push({ s, d, kind: 'crit', text: d.label, sub: 'Missing — blocks next step' }));
-      s.dps.filter((d) => dpStatus(d) === 'review').forEach((d) => items.push({ s, d, kind: 'ok', text: d.label, sub: 'Needs engineer confirmation' }));
-      const g = gateChecks(s);
-      if (g.pass && g.next) items.push({ s, kind: 'ink', text: `Gate met for ${stageLabel(g.next)}`, sub: 'Ready to advance' });
-    });
-    const rank = { crit: 0, ok: 1, ink: 2 };
-    items.sort((a, b) => rank[a.kind] - rank[b.kind]);
-    $('#queue').innerHTML = `
-      <div class="panel-head"><div class="eyebrow flex-1">Needs action</div><span class="text-[11px] text-mute num">${items.length}</span></div>
-      <div class="overflow-y-auto max-h-[300px]">${items.length ? items.map((it) => `
-        <button class="w-full text-left px-5 py-3 border-b border-line2 hover:bg-paper block" data-action="open-site" data-id="${it.s.id}" ${it.d ? `data-dp="${it.d.key}"` : ''}>
-          <div class="flex items-baseline justify-between gap-3"><span class="text-[13px] text-ink truncate">${esc(it.s.name)}</span><span class="text-[11px] text-mute shrink-0">${EQ.STAGES[it.s.stage].n}</span></div>
-          <div class="text-[12px] text-ink2 truncate">${esc(it.text)}</div>
-          <div class="mt-1">${tag(it.kind, it.sub)}</div>
-        </button>`).join('') : `<div class="px-5 py-6 text-[13px] text-mute">No items.</div>`}</div>`;
-  }
-
   function renderDirectory() {
     const list = sortedSites(filteredSites());
     const th = (k, label) => `<th class="sortable" data-action="sort" data-key="${k}">${label}${S.sort.key === k ? (S.sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>`;
@@ -336,27 +332,34 @@
         <input data-role="mobile-search" type="search" value="${esc(f.q)}" placeholder="Search" class="field h-8 px-2.5 text-[13px] sm:hidden w-full" />
         <button class="btn btn-secondary btn-sm" data-action="export-directory">Export CSV</button></div>
       <div class="overflow-x-auto"><table class="tbl w-full min-w-[1100px]">
-        <thead><tr>${th('name', 'Facility')}${th('sector', 'Type · size')}${th('kwh', 'Grid use')}<th>Overview</th>${th('risks', 'Risks')}${th('score', 'Design readiness')}${th('stage', 'Step')}</tr></thead>
+        <thead><tr>${th('name', 'Facility')}${th('intake', 'Needs action')}${th('sector', 'Type · size')}${th('kwh', 'Grid use')}<th>Overview</th>${th('risks', 'Risks')}${th('score', 'Design readiness')}</tr></thead>
         <tbody>${list.length ? list.map(rowHTML).join('') : `<tr><td colspan="7" class="!py-12 text-center text-mute">No facilities match. <button class="link" data-action="clear-all-filters">Clear filters</button></td></tr>`}</tbody>
       </table></div>`;
-  }
-  function sparkline(s, w = 96, h = 24) {
-    const b = rec(s).benchmark.filter((x) => x.year >= 2018), max = Math.max(...b.map((x) => x.kwh || 0), 1), bw = w / Math.max(b.length, 1);
-    return `<svg width="${w}" height="${h}" aria-hidden="true">${b.map((x, i) => x.kwh ? `<rect x="${i * bw + 1}" y="${h - (x.kwh / max) * h}" width="${bw - 2}" height="${(x.kwh / max) * h}" fill="${i === b.length - 1 ? '#3c6390' : '#b3c8e4'}"/>` : `<rect x="${i * bw + 1}" y="${h - 2}" width="${bw - 2}" height="2" fill="#d3cecd"/>`).join('')}</svg>`;
   }
   function overviewDots(s) {
     return `<div class="flex flex-wrap gap-x-3 gap-y-1">${EQ.AREAS.map((a) => { const x = areaStatus(s, a.key); return `<span class="tag ${EQ.STATUS[x.status].cls}" title="${esc(a.name)}: ${esc(x.status)} — ${esc(x.note)}">${esc(a.name.split(' ')[0])}</span>`; }).join('')}</div>`;
   }
+  function intakeHTML(s) {
+    const cur = intakeIdx(s), a = nextAction(s);
+    return `<div class="tracker">${EQ.INTAKE.map((t, i) => `<button class="text-left ${i < cur ? 'done' : i === cur ? 'cur' : ''}" data-action="set-intake" data-i="${i}" title="${t.auto ? 'Moves automatically when the facility sends data' : i < 2 && hasCustomerData(s) ? 'Completed: the facility has sent data' : 'Click to set'}"><div class="n num">${t.n}${i < cur ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div><div class="l">${esc(t.label)}</div></button>`).join('')}</div>
+      <div class="text-[12px] text-ink2 mt-3">${s.stage !== 'intake' ? `Intake complete · now in <span class="text-ink">${esc(EQ.STAGES[s.stage].label)}</span> · ` : ''}Next: <span class="text-ink">${esc(a.text)}</span>${a.more.length ? ` · ${esc(a.more.join(' · '))}` : ''}</div>`;
+  }
+  function actionCell(s) {
+    const a = nextAction(s), st = EQ.INTAKE[intakeIdx(s)];
+    return `<div class="text-[13px] ${a.done ? 'text-steel' : 'text-ink'}">${esc(a.text)}</div>
+      ${a.more.length ? `<div class="text-[11.5px] text-ink2">${esc(a.more.join(' · '))}</div>` : ''}
+      <div class="text-[11.5px] text-mute mt-0.5">${st ? `<span class="num">${st.n}</span> ${esc(st.label)}` : `Delivery · ${esc(EQ.STAGES[s.stage].label)}`}</div>`;
+  }
   function rowHTML(s) {
     const sc = score(s), h = health(s), l = latestKwh(s), risks = s.findings.filter((f) => f.sev === 'risk').length;
     return `<tr data-action="open-site" data-id="${s.id}" data-row="${s.id}">
-      <td><div class="text-ink font-medium">${esc(s.name)}</div><div class="text-[12px] text-ink2">${esc(s.address)}, ${esc(s.city)} · APN ${esc(s.apn)}</div><div class="text-[11.5px] text-mute">${esc(s.tenant)}</div></td>
+      <td><div class="text-ink font-medium">${esc(s.name)}</div><div class="text-[12px] text-ink2">${esc(s.address)}, ${esc(s.city)} · APN ${esc(s.apn)}${s.apnCandidate ? ' (candidate)' : ''}</div><div class="text-[11.5px] text-mute">${esc(s.tenant)}</div></td>
+      <td class="min-w-[210px]">${actionCell(s)}</td>
       <td><div>${esc(s.sector)}</div><div class="text-[11.5px] text-mute num">${fmt(s.floorArea)} sf · built ${s.yearBuilt || '—'}</div></td>
-      <td><div class="flex items-center gap-3">${sparkline(s)}<div class="num">${l ? fmt(l.kwh / 1e6, 2) + ' GWh' : '—'}<div class="text-[11.5px] text-mute">${l ? l.year : ''}</div></div></div></td>
+      <td><div class="num">${l ? fmt(l.kwh / 1e6, 2) + ' GWh' : '—'}<div class="text-[11.5px] text-mute">${l ? l.year : ''}</div></div></td>
       <td class="min-w-[220px]">${overviewDots(s)}</td>
       <td class="num ${risks ? 'text-alert' : 'text-mute'}">${risks}</td>
       <td class="min-w-[180px]"><div class="flex items-baseline justify-between mb-1.5"><span class="num text-[15px] text-ink">${sc}</span>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>${segbar(s)}</td>
-      <td><div class="text-[11px] text-mute num">${EQ.STAGES[s.stage].n}</div><div class="text-[12.5px] whitespace-nowrap">${EQ.STAGES[s.stage].label}</div></td>
     </tr>`;
   }
   /* ---------------------------------------------------------------- map */
@@ -458,7 +461,7 @@
     clearTimeout(R.hoverTimer);
     const el = $('#map-hover'), l = latestKwh(s), pe = EQ.peakEstimate(s), top = s.findings.find((f) => f.sev === 'risk');
     el.innerHTML = `<div class="bg-white border border-line shadow-pop">
-      <div class="px-4 pt-3.5 pb-3 border-b border-line2"><div class="text-[11px] text-mute num">${esc(stageLabel(s.stage))} · APN ${esc(s.apn)}</div>
+      <div class="px-4 pt-3.5 pb-3 border-b border-line2"><div class="text-[11px] text-mute num">${esc(stepLabel(s))} · APN ${esc(s.apn)}</div>
         <div class="text-[15px] text-ink mt-0.5">${esc(s.name)}</div><div class="text-[12px] text-ink2">${esc(s.address)}, ${esc(s.city)}</div></div>
       <dl class="grid grid-cols-2 gap-x-4 gap-y-2.5 px-4 py-3 text-[12px]">
         <div><dt class="text-mute">Type</dt><dd class="text-ink">${esc(s.sector)}</dd></div>
@@ -492,6 +495,17 @@
     Object.values(R.charts || {}).forEach((c) => c.destroy()); R.charts = {};
     if (R.satThumb) { R.satThumb.remove(); R.satThumb = null; }
   }
+  /* Header facts: SF leads from DataSF; other sites from the facility list and the address lookup. */
+  function headerFacts(s, l, r) {
+    if (s.sf) return [['Floor area', `${fmt(s.floorArea)} sf`, 'Benchmarking'], ['Built · stories', `${s.yearBuilt || '—'} · ${s.stories}`, 'Benchmarking'], ['Occupancy', s.occupancy, 'Permit history'], ['Grid use', l ? `${fmt(l.kwh / 1e6, 2)} GWh (${l.year})` : '—', l ? `Benchmarking ${l.year}` : null],
+      ['Utility', 'PG&E · rate unknown', EQ.addrSrc('f_util')], ['County', 'San Francisco, CA', null], ['AHJ', 'SF DBI · SFFD', EQ.addrSrc('d_fire')], ['Records', `${r.permits.length} permits · ${r.benchmark.length} yrs benchmarking`, 'Permit history']];
+    const F = (id) => EQ.addrField(s, id), sh = (id, n = 48) => { const f = F(id); return EQ.addrHas(f) ? String(f.display).split(/[;(]/)[0].slice(0, n).trim() : '—'; };
+    const doc = EQ.addrDoc(s), sum = doc ? doc.record.summary : null;
+    return [['Floor area', s.floorArea ? `${fmt(s.floorArea)} sf` : sh('b_bld'), EQ.addrSrc(s.floorArea ? 'b_floor' : 'b_bld')], ['Zoning', sh('z_zone', 40), EQ.addrSrc('z_zone')],
+      ['Seismic', sh('e_seis'), EQ.addrSrc('e_seis')], ['Peak demand', s.peakText || (s.system ? `${fmt((doc.facility || {}).peak_kw)} kW (${(doc.facility || {}).peak_basis})` : '—'), null],
+      ['Utility', `${s.utility}${s.tariff ? ' · ' + s.tariff.replace(s.utility + ' ', '') : ' · rate unknown'}`, EQ.addrSrc('f_util')], ['County', `${s.county}, ${s.state}`, EQ.addrSrc('a_cnty')],
+      ['Fire authority', sh('d_fire', 36), EQ.addrSrc('d_fire')], ['Address lookup', sum ? `${sum.required_done_pct}% of required items filled` : 'Not built yet', 'Address lookup']];
+  }
   function renderSite(s) {
     destroySiteWidgets();
     const cur = stageIdx(s), l = latestKwh(s), r = rec(s);
@@ -507,11 +521,10 @@
             <div class="min-w-0 flex-1">
               <div class="eyebrow">${esc(s.sector)} · ${esc(s.neighborhood)}</div>
               <h1 class="display text-[32px] leading-tight mt-1.5">${esc(s.name)}</h1>
-              <p class="text-[13.5px] text-ink2 mt-1">${esc(s.address)}, ${esc(s.city)}, ${s.state} ${s.zip} · APN ${esc(s.apn)}${r.pim ? ` · ${extLink(r.pim, 'SF Planning PIM')}` : ''}</p>
+              <p class="text-[13.5px] text-ink2 mt-1">${esc(s.address)}, ${esc(s.city)}, ${s.state} ${s.zip}${s.apn ? ` · APN ${esc(s.apn)}${s.apnCandidate ? ' <button class="link text-[12px]" data-action="source" data-src="Address lookup (b_apn)" data-title="APN candidates">(candidate, unconfirmed)</button>' : ''}` : ''}${r.pim ? ` · ${extLink(r.pim, 'SF Planning PIM')}` : ''}</p>
               <p class="text-[12.5px] text-mute">${esc(s.tenant)}</p>
               <dl class="grid grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-3 mt-4 text-[13px]">
-                ${[['Floor area', `${fmt(s.floorArea)} sf`, 'Benchmarking'], ['Built · stories', `${s.yearBuilt || '—'} · ${s.stories}`, 'Benchmarking'], ['Occupancy', s.occupancy, 'Permit history'], ['Grid use', l ? `${fmt(l.kwh / 1e6, 2)} GWh (${l.year})` : '—', l ? `Benchmarking ${l.year}` : null],
-                  ['Utility', 'PG&E · rate unknown', null], ['County', 'San Francisco, CA', null], ['AHJ', 'SF DBI · SFFD', null], ['Records', `${r.permits.length} permits · ${r.benchmark.length} yrs benchmarking`, 'Permit history']]
+                ${headerFacts(s, l, r)
                   .map(([k, v, src]) => `<div><dt class="text-[11.5px] text-mute">${k}</dt><dd class="text-ink mt-0.5">${src ? `<button class="text-left hover:text-blue underline decoration-line underline-offset-2" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${esc(v)}</button>` : esc(v)}</dd></div>`).join('')}
               </dl>
               <p class="text-[14px] text-ink mt-4">${esc(s.summary)}</p>
@@ -519,7 +532,7 @@
           </div>
           <div class="lg:col-span-4 p-6" id="site-score"></div>
         </div>
-        <div class="px-6 pb-6 pt-1"><div class="tracker">${EQ.STAGE_ORDER.map((k, i) => `<div class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="n num">${EQ.STAGES[k].n}</div><div class="l">${EQ.STAGES[k].label}</div></div>`).join('')}</div></div>
+        <div class="px-6 pb-6 pt-1" id="site-intake">${intakeHTML(s)}</div>
       </section>
 
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border-l border-t border-line bg-white" id="snapshot"></section>
@@ -529,19 +542,22 @@
         <aside class="xl:col-span-4 space-y-6"><div class="panel" id="site-requests"></div><div class="panel" id="site-activity"></div></aside>
       </section>
 
+      <section class="panel" id="site-addr"></section>
+
       <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div class="xl:col-span-8 space-y-6" id="site-matrix"></div>
-        <aside class="xl:col-span-4 space-y-6 xl:sticky xl:top-[124px]"><div class="panel" id="site-codes"></div><div class="panel" id="site-responder"></div></aside>
+        <aside class="xl:col-span-4 space-y-6 xl:sticky xl:top-[124px]"><div class="panel" id="site-codes"></div></aside>
       </section>
 
       <section class="panel" id="site-permits"></section>
       <section class="panel" id="site-docs"></section>
       <section class="panel" id="site-vault"></section>
       <section id="site-pocs"></section>`;
-    renderScore(s); renderSnapshot(s); renderFindings(s); renderMatrix(s); renderRequests(s); renderActivity(s); renderPermits(s); renderDocs(s); renderResponderCard(s); renderCodes(s); renderVault(s); renderPocs(s);
+    renderScore(s); renderSnapshot(s); renderFindings(s); renderMatrix(s); renderRequests(s); renderActivity(s); renderPermits(s); renderDocs(s); renderCodes(s); renderVault(s); renderPocs(s); renderAddr(s);
     icons(); initSatThumb(s); renderLoad(s);
   }
   function refreshSite(s, flashKey) {
+    const it = $('#site-intake'); if (it) it.innerHTML = intakeHTML(s);
     renderScore(s); renderSnapshot(s); renderFindings(s);
     EQ.SECTIONS.forEach((p) => renderSectionBody(s, p.key));
     renderFieldBody(s); renderTieIn(s);
@@ -604,7 +620,7 @@
   /* ---------------------------------------------------------------- primary-source viewer */
   const DS = { Building: 'i98e-djp9', Electrical: 'ftty-kx6y' };
   function resolveSources(s, src) {
-    const out = { permits: [], years: null, all: false, aerial: false, other: [] };
+    const out = { permits: [], years: null, all: false, aerial: false, utility: false, addr: [], addrAll: false, other: [] };
     String(src || '').split('·').map((t) => t.trim()).filter(Boolean).forEach((t) => {
       const m = t.match(/^(BP|EP)\s+(?:filed\s+)?(\d{4}-\d{2}-\d{2})/);
       if (m) { rec(s).permits.filter((p) => p.date === m[2] && p.kind === (m[1] === 'BP' ? 'Building' : 'Electrical')).forEach((p) => out.permits.push(p)); return; }
@@ -612,6 +628,11 @@
       if (b) { out.years = [+b[1], +(b[2] || b[1])]; return; }
       if (/Permit history/i.test(t)) { out.all = true; return; }
       if (/Aerial/i.test(t)) { out.aerial = true; return; }
+      if (t === EQ.UTIL_SRC) { out.utility = true; return; }
+      const am = t.match(/^Address lookup \((\w+)\)$/);
+      if (am) { out.addr.push(am[1]); return; }
+      if (t === 'Address lookup') { out.addrAll = true; return; }
+      if (t === 'Lead form') { out.lead = true; return; }
       out.other.push(t);
     });
     return out;
@@ -633,10 +654,113 @@
     if (r.permits.length) h += r.permits.map((p) => permitCard(s, p)).join('');
     if (r.years) h += benchTable(s, r.years);
     if (r.all) h += `<div class="text-[12.5px] text-ink2">${rec(s).permits.length} permits on record for APN ${esc(s.apn)} (${esc(rec(s).permits.at(-1)?.date?.slice(0, 4) || '')}–${esc(rec(s).permits[0]?.date?.slice(0, 4) || '')}). <button class="link" data-action="goto-permits">Open permit records</button> · ${extLink(`https://data.sfgov.org/resource/i98e-djp9.json?$where=${encodeURIComponent(`block='${s.apn.split('/')[0]}' AND lot='${s.apn.split('/')[1]}'`)}`, 'DataSF query')}</div>`;
+    if (r.utility) h += utilityHTML(s);
+    r.addr.forEach((id) => { h += addrFieldHTML(s, id); });
+    if (r.addrAll) h += addrSummaryHTML(s);
+    if (r.lead) h += leadHTML(s);
     if (r.aerial) h += `<div class="text-[12.5px] text-ink2 mt-2">Esri World Imagery at the address point. <button class="link" data-action="open-satellite">Open aerial</button></div>`;
     if (r.other.length || url) h += `<div class="text-[12.5px] text-ink2 mt-2">${esc(r.other.join(' · '))}${url ? ` · ${extLink(url, 'source')}` : ''}</div>`;
     return h || '<div class="text-[12.5px] text-mute">No linked record.</div>';
   }
+  /* Utility hosting-capacity record: every value with its exact query, data date and confidence. */
+  function utilityHTML(s) {
+    const r = EQ.utilityRecord(s);
+    if (!r) return '<div class="text-[12.5px] text-mute">No utility record for this site. Run <span class="font-mono">./site_record "ADDRESS" --utility pge --site-id ' + esc(s.id) + '</span>.</div>';
+    const f = r.feeder, h = r.hosting_capacity;
+    const gapBy = Object.fromEntries((r.gaps || []).map((g) => [g.field, g]));
+    const row = (label, v, path) => {
+      if (v) return `<tr class="border-t border-line2"><td class="px-3 py-2 text-mute align-top w-[30%]">${label}</td><td class="px-3 py-2 align-top"><div class="text-ink num">${esc(EQ.utilFmt(v))}</div>
+        <div class="text-[11.5px] text-mute mt-0.5">${[v.data_date ? `Utility data ${esc(v.data_date)}` : '', confLabel[v.confidence] || '', `Retrieved ${esc(v.retrieved)}`, extLink(v.source.url, 'query')].filter(Boolean).join(' · ')}</div>
+        ${v.note ? `<div class="text-[11.5px] text-ink2 mt-1">${esc(v.note)}</div>` : ''}</td></tr>`;
+      const g = gapBy[path];
+      return `<tr class="border-t border-line2"><td class="px-3 py-2 text-mute align-top w-[30%]">${label}</td><td class="px-3 py-2 align-top"><div class="text-alert">Gap${g && g.reason ? ` · ${esc(g.reason)}` : ''}</div>
+        ${g ? `<div class="text-[11.5px] text-ink2 mt-0.5">Why: ${esc(g.why)}</div><div class="text-[11.5px] text-ink2">Collect: ${esc(g.how_to_collect)}</div>` : ''}</td></tr>`;
+    };
+    const m = r.match;
+    const extra = Object.entries(r.extra || {});
+    return `<div class="border border-line">
+      <div class="px-3 py-2 flex flex-wrap items-baseline gap-x-3 text-[12px] border-b border-line"><span class="text-ink">${esc(r.utility ? r.utility.value : r.input.utility)}</span><span class="text-mute">utility from the customer's bill</span><span class="ml-auto text-mute">Record ${esc(r.generated_at.slice(0, 10))}</span></div>
+      <table class="w-full text-[12.5px]"><tbody>
+        ${row('Geocoded address', r.site.address, 'site.address')}
+        ${row('Feeder', f.name, 'feeder.name')}${row('Feeder ID', f.id, 'feeder.id')}${row('Substation', f.substation, 'feeder.substation')}${f.division ? row('Division', f.division, 'feeder.division') : ''}
+        ${row('Feeder voltage', r.feeder_voltage_kv, 'feeder_voltage_kv')}${r.phases ? row('Phases', r.phases, 'phases') : ''}
+        ${row('Generation hosting capacity', h.generation, 'hosting_capacity.generation')}${row('Load hosting capacity', h.load, 'hosting_capacity.load')}
+        ${row('Computed', h.computed, 'hosting_capacity.computed')}${row('Limiting criteria', h.limiting_criteria, 'hosting_capacity.limiting_criteria')}
+      </tbody></table></div>
+      ${m ? `<div class="eyebrow mt-4 mb-1.5">Feeder match</div><div class="text-[12.5px] text-ink2">${esc(m.method)}</div>
+        ${m.candidates && m.candidates.length > 1 ? `<table class="w-full text-[12px] border border-line mt-2"><thead class="text-mute"><tr><th class="text-left px-3 py-1 font-normal">Candidate feeder</th><th class="text-right px-3 font-normal">Nearest section</th><th class="text-right px-3 font-normal">Sections</th></tr></thead><tbody>${m.candidates.map((c, i) => `<tr class="border-t border-line2 ${i ? 'text-ink2' : 'text-ink'}"><td class="px-3 py-1 font-mono">${esc(c.feeder)}</td><td class="px-3 text-right num">${c.distance_m != null ? c.distance_m + ' m' : c.within_m ? 'within ' + c.within_m + ' m' : '—'}</td><td class="px-3 text-right num">${c.sections ?? ''}</td></tr>`).join('')}</tbody></table>` : ''}` : ''}
+      ${extra.length ? `<details class="mt-4"><summary class="text-[12px] text-ink2 cursor-pointer">Other utility fields (${extra.length})</summary><dl class="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-[12px]">${extra.map(([k, v]) => `<div><dt class="text-mute font-mono">${esc(k)}</dt><dd class="text-ink num">${v.value == null ? '—' : esc(EQ.utilFmt(v))} ${extLink(v.source.url, '↗')}${v.note ? `<span class="block text-[11px] text-mute">${esc(v.note)}</span>` : ''}</dd></div>`).join('')}</dl></details>` : ''}
+      ${(r.notes || []).length ? `<div class="eyebrow mt-4 mb-1.5">Notes</div><ul class="text-[12.5px] text-ink2 list-disc pl-5 space-y-1">${r.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+      ${(r.errors || []).length ? `<div class="eyebrow mt-4 mb-1.5 text-alert">Errors</div><ul class="text-[12.5px] text-alert list-disc pl-5">${r.errors.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+      <div class="mt-4 border-l-2 border-ochre pl-3 text-[12px] text-ink2 space-y-1">${r.cautions.map((c) => `<p>${esc(c)}</p>`).join('')}</div>
+      <details class="mt-4"><summary class="text-[12px] text-ink2 cursor-pointer">All queries (${r.queries.length})</summary><ol class="mt-2 text-[11.5px] space-y-1 list-decimal pl-5">${r.queries.map((q) => `<li>${extLink(q.url, q.name)}</li>`).join('')}</ol></details>`;
+  }
+  /* ---------------------------------------------------------------- address lookup (site_records/) */
+  const ADDR_STATUS = { filled: ['ok', 'Filled'], provided: ['ink', 'Provided'], confirm: ['gap', 'Confirm'], needed: ['crit', 'Needed'] };
+  const addrMeta = (f) => [f.source_label, f.vintage ? `vintage ${f.vintage}` : null, confLabel[f.confidence]].filter(Boolean).map(esc).join(' · ');
+  function addrFieldHTML(s, id) {
+    const f = EQ.addrField(s, id);
+    if (!f) return `<div class="text-[12.5px] text-mute">No address record field ${esc(id)} for this site.</div>`;
+    const st = ADDR_STATUS[f.status] || ['muted', f.status];
+    const flags = (EQ.addrDoc(s).record.flags || []).filter((x) => (x.field_ids || []).includes(id));
+    const miss = (EQ.addrDoc(s).record.missing || []).find((x) => x.field_id === id);
+    return `<div class="border border-line p-3 mb-2"><div class="flex flex-wrap items-baseline gap-x-3 text-[12px]"><span class="text-ink">${esc(f.label)}</span><span class="text-mute">${esc(f.section)}</span>${tag(st[0], st[1])}${f.source_url ? `<span class="ml-auto">${extLink(f.source_url, 'source')}</span>` : ''}</div>
+      <div class="text-[14px] text-ink mt-1.5 break-words">${esc(f.display)}</div>
+      <div class="text-[11.5px] text-mute mt-1">${addrMeta(f)}</div>
+      ${f.note ? `<div class="text-[12px] text-ink2 mt-1.5">${esc(f.note)}</div>` : ''}
+      ${miss ? `<div class="text-[12px] text-ink2 mt-1.5"><span class="text-mute">Collect (${esc(miss.who)}):</span> ${esc(miss.why)}</div>` : ''}
+      ${flags.map((x) => `<div class="text-[12px] mt-1.5 ${x.severity === 'warn' ? 'text-alert' : 'text-ink2'}">${esc(x.title)}. ${esc(x.detail)}</div>`).join('')}</div>`;
+  }
+  function leadHTML(s) {
+    const l = s.lead; if (!l) return '<div class="text-[12.5px] text-mute">No lead form on file.</div>';
+    const rows = [['Submitted', fmtDT(l.createdAt)], ['Contact', [l.contact.name, l.contact.role, l.contact.email, l.contact.phone].filter(Boolean).join(' · ')], ['Address as entered', l.address],
+      ['Geocoded', l.geo ? `${l.geo.matched} (${l.geo.source})` : 'No match'], ['Facility', [l.facility, l.type, l.sqft ? fmt(l.sqft) + ' sf' : null, l.tenure].filter(Boolean).join(' · ')],
+      ['Operating hours', { 1: 'One shift', 2: 'Two shifts', 3: '24/7' }[l.hours] || '—'], ['Utility and rate', `${l.utility}${l.rate ? ' ' + l.rate : ' (rate not given)'}`], ['Monthly bill', l.bill ? `$${fmt(l.bill)}` : '—'],
+      ['Peak (customer)', l.peakEntered ? `${fmt(l.peakEntered)} kW` : '—'], ['On site', (l.der || []).join(', ') || '—'], ['Files', (l.files || []).map((f) => f.name).join(', ') || '—'], ['Notes', l.notes || '—'],
+      ['Estimate shown', l.estimate ? `$${fmt(l.estimate.lo)}–$${fmt(l.estimate.hi)}/yr · ${fmt(l.estimate.sysKw)} kW / ${fmt(l.estimate.sysKwh)} kWh · $${fmt(l.estimate.rateYr)}/kW-yr ${l.estimate.typical ? '(typical rate)' : '(' + l.estimate.tariff + ')'}` : '—']];
+    return `<dl class="border border-line text-[12.5px]">${rows.map(([k, v]) => `<div class="grid grid-cols-[150px_1fr] gap-3 px-3 py-2 border-t border-line2 first:border-t-0"><dt class="text-mute">${esc(k)}</dt><dd class="text-ink break-words">${esc(v)}</dd></div>`).join('')}</dl>`;
+  }
+  function addrSummaryHTML(s) {
+    const d = EQ.addrDoc(s); if (!d) return '<div class="text-[12.5px] text-mute">No address record for this site yet. Build one with <span class="font-mono">python -m eqore_site.export --address "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}" --out site_records</span>, or from GitHub: Actions → <i>Site records</i> → Run workflow with the address.</div>';
+    const m = d.record.summary;
+    return `<div class="text-[12.5px] text-ink2">${m.required_done_pct}% of ${m.required} required items filled from public data (${m.required_auto_pct}% can be filled automatically). Record built ${esc(d.record.generated_at.slice(0, 10))} from ${d.record.sources.length} sources; status ${esc(d.record.status.replace(/_/g, ' '))}.</div>`;
+  }
+  function renderAddr(s) {
+    const el = $('#site-addr'); if (!el) return;
+    const d = EQ.addrDoc(s);
+    if (!d) { el.innerHTML = `<div class="panel-head"><h3 class="h-section !text-[19px] flex-1">Address lookup</h3></div><div class="px-5 py-5">${addrSummaryHTML(s)}</div>`; return; }
+    const R = d.record, m = R.summary, open = S.addrSection || null;
+    const sections = [...new Set(R.fields.map((f) => f.section))];
+    const who = Object.entries(m.to_collect_by_who || {});
+    const cands = R.candidates.slice(0, 6);
+    el.innerHTML = `<div class="panel-head flex-wrap"><h3 class="h-section !text-[19px] flex-1">Address lookup</h3>
+        <span class="text-[12px] text-ink2">${m.required_done_pct}% of ${m.required} required items · built ${esc(R.generated_at.slice(0, 10))} · ${R.sources.length} public sources</span></div>
+      <div class="grid grid-cols-1 lg:grid-cols-12">
+        <div class="lg:col-span-8 border-b lg:border-b-0 lg:border-r border-line2">
+          ${sections.map((sec) => { const fs = R.fields.filter((f) => f.section === sec), got = fs.filter((f) => f.status !== 'needed');
+            const isOpen = open === sec || (open == null && sec === sections[0]);
+            return `<div class="border-t border-line2 first:border-t-0">
+              <button class="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-paper" data-action="addr-section" data-sec="${esc(sec)}" aria-expanded="${isOpen}">
+                <span class="text-[13.5px] text-ink flex-1">${esc(sec)}</span><span class="text-[12px] text-ink2 num">${got.length}/${fs.length}</span>
+                <span class="w-24 h-[3px] bg-line2"><span class="block h-full bg-steel" style="width:${(got.length / fs.length) * 100}%"></span></span><span class="text-mute">${isOpen ? '−' : '+'}</span></button>
+              ${isOpen ? `<table class="w-full text-[12.5px]"><tbody>${fs.map((f) => { const st = ADDR_STATUS[f.status] || ['muted', f.status];
+                return `<tr class="border-t border-line2 cursor-pointer hover:bg-paper" data-action="source" data-src="${EQ.addrSrc(f.id)}" data-title="${esc(f.label)}">
+                  <td class="px-5 py-2 align-top text-mute w-[32%]">${esc(f.label)}</td>
+                  <td class="py-2 align-top ${f.status === 'needed' ? 'text-mute' : 'text-ink'} break-words">${esc(String(f.display).length > 160 ? String(f.display).slice(0, 160) + '…' : f.display)}${f.status !== 'needed' ? `<div class="text-[11px] text-mute mt-0.5">${esc(f.source_label)}${f.vintage ? ' · ' + esc(String(f.vintage).slice(0, 40)) : ''}</div>` : ''}</td>
+                  <td class="px-5 py-2 align-top text-right whitespace-nowrap">${tag(st[0], st[1])}</td></tr>`; }).join('')}</tbody></table>` : ''}</div>`; }).join('')}
+        </div>
+        <div class="lg:col-span-4">
+          <div class="px-5 pt-4 pb-1 eyebrow">Still to collect</div>
+          <dl class="px-5 pb-3 text-[12.5px]">${who.map(([k, v]) => `<div class="flex justify-between py-1.5 border-b border-line2"><dt class="text-ink2">${esc(k)}</dt><dd class="num text-ink">${v.needed || 0} needed${v.confirm ? ` · ${v.confirm} to confirm` : ''}</dd></div>`).join('')}</dl>
+          <div class="px-5 pt-3 pb-1 eyebrow">Parcel candidates</div>
+          <div class="px-5 pb-1 text-[11.5px] text-mute">The tool never picks a parcel; the customer confirms the lot.</div>
+          <table class="w-full text-[12px]"><tbody>${cands.map((c) => `<tr class="border-t border-line2"><td class="px-5 py-1.5 font-mono text-ink">${esc(c.apn.value)}</td><td class="py-1.5 text-ink2">${esc(c.situs && c.situs.value ? c.situs.value : '')}</td><td class="px-5 py-1.5 text-right num text-mute">${c.distance_m != null ? Math.round(c.distance_m) + ' m' : ''}</td></tr>`).join('') || '<tr><td class="px-5 py-2 text-mute">None found</td></tr>'}</tbody></table>
+          <div class="px-5 py-4 text-[11.5px] text-ink2">Distances and hazard layers are screening only; no fire-code rule is applied. Flood zone needs a manual FEMA lookup.</div>
+        </div></div>`;
+  }
+  const siteGapHTML = (d) => (d.siteGaps || []).length ? `<div class="eyebrow mt-6 mb-2">What EQORE needs</div><ul class="border border-line">${d.siteGaps.map((g) => `<li class="px-4 py-2.5 border-t border-line2 first:border-t-0 text-[12.5px]">
+      <div class="flex flex-wrap items-baseline gap-x-2"><span class="text-ink">${esc(EQ.SITE_GAP_LABEL[g.field] || g.field)}</span><span class="text-[11.5px] text-mute">${g.who === 'utility' ? 'request from the utility' : 'from the customer'}</span></div>
+      <div class="text-ink2 mt-0.5">${esc(g.why)}</div><div class="text-ink2">Collect: ${esc(g.how_to_collect)}</div>${g.safety ? `<div class="text-[11.5px] text-ochre mt-1">${esc(g.safety)}</div>` : ''}</li>`).join('')}</ul>` : '';
   function openSource(s, src, title, url) {
     openModal({ title: 'Primary source', subtitle: esc(title || src), size: 'max-w-3xl', body: `<div class="text-[11.5px] text-mute mb-3">Cited as: ${esc(src)}</div>${sourceHTML(s, src, url)}` });
   }
@@ -658,6 +782,12 @@
     return [...out];
   }
   function renderPermits(s) {
+    if (!s.sf) {
+      const f = EQ.addrField(s, 'b_permits');
+      $('#site-permits').innerHTML = `<div class="panel-head"><h3 class="h-section !text-[19px] flex-1">Permit records</h3></div>
+        <div class="px-5 py-4 text-[13px] text-ink2">${EQ.addrHas(f) ? `${esc(f.display)} <button class="link" data-action="source" data-src="${EQ.addrSrc('b_permits')}" data-title="Permits">source</button>` : `No permit adapter for ${esc(s.city)} yet. Search the city's permit portal for the confirmed parcel, or run <span class="font-mono">python -m permits fetch "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}"</span> where a jurisdiction adapter exists.`}</div>`;
+      return;
+    }
     const ps = rec(s).permits, f = S.permitFilter || 'relevant';
     const pass = (p, k) => (k === 'all' ? true : k === 'relevant' ? permitClasses(p).length > 0 : permitClasses(p).includes(k));
     const shown = ps.filter((p) => pass(p, f));
@@ -695,8 +825,8 @@
     const stat = (k, v, sub, src) => `<div><dt class="text-[11.5px] text-mute">${k}</dt><dd class="display text-[20px] num leading-tight mt-0.5">${src ? `<button class="hover:text-blue" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${v}</button>` : v}</dd><dd class="text-[11.5px] text-ink2">${sub}</dd></div>`;
     el.innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <div class="lg:col-span-8">
-        <div class="text-[14px] text-ink">Grid electricity by year</div><div class="text-[12px] text-mute mb-2">SF benchmarking, grid purchase. Gray = not reported. Click a bar for the record.</div>
-        <div class="relative h-[200px]"><canvas id="bench-chart" role="img" aria-label="Annual grid electricity"></canvas></div>
+        ${b.length ? `<div class="text-[14px] text-ink">Grid electricity by year</div><div class="text-[12px] text-mute mb-2">SF benchmarking, grid purchase. Gray = not reported. Click a bar for the record.</div>
+        <div class="relative h-[200px]"><canvas id="bench-chart" role="img" aria-label="Annual grid electricity"></canvas></div>` : `<div class="text-[14px] text-ink">No public energy benchmarking for this address</div><div class="text-[12.5px] text-ink2 mt-1">${s.system ? `Facility list: peak ${fmt((EQ.addrDoc(s).facility || {}).peak_kw)} kW (${esc((EQ.addrDoc(s).facility || {}).peak_basis)}), peak-shave target ${fmt((EQ.addrDoc(s).facility || {}).target_kw)} kW, ${esc(s.system.status)} system ${fmt(s.system.kw)} kW / ${fmt(s.system.kwh)} kWh.` : ''}${iv ? '' : ' Upload 12 months of 15-min interval data to size against measured load.'}</div>`}
         ${iv ? `<div class="text-[14px] text-ink mt-5">Peak day from interval data</div><div class="text-[12px] text-mute mb-2">${esc(iv.file)} · ${fmt(iv.count)} intervals · ${iv.minutes}-min · ${esc(iv.start)} – ${esc(iv.end)}</div>
           <div class="relative h-[200px]"><canvas id="peak-chart" role="img" aria-label="Peak day demand"></canvas></div>
           <div class="text-[14px] text-ink mt-5 mb-2">Monthly peak demand</div><div class="relative h-[180px]"><canvas id="month-chart" role="img" aria-label="Monthly peak demand"></canvas></div>` : ''}
@@ -705,44 +835,19 @@
         ${stat('Latest annual use', latestKwh(s) ? `${fmt(latestKwh(s).kwh)} kWh` : '—', latestKwh(s) ? `${latestKwh(s).year}` : 'Not reported', latestKwh(s) ? `Benchmarking ${latestKwh(s).year}` : null)}
         ${iv ? stat('Measured peak', `${fmt(iv.peakKw, 1)} kW`, esc(iv.peakAt)) + stat('Load factor', `${fmt(iv.loadFactor * 100)}%`, esc(iv.peakHours))
           : pe ? stat('Peak estimate', `${fmt(pe.lo)}–${fmt(pe.hi)} kW`, `avg ${fmt(pe.avg)} kW ÷ typical ${esc(s.sector.toLowerCase())} load factor`, `Benchmarking ${pe.year}`) : ''}
-        ${stat('Rate class', iv ? (iv.peakKw >= 1000 ? 'B-20 range' : iv.peakKw >= 500 ? 'B-19 range' : 'B-10 range') : pe && pe.hi < 500 ? 'Likely B-10' : 'B-10 or B-19', 'Confirm on bill (PG&E bundled or CleanPowerSF)')}
-        <div class="col-span-2 lg:col-span-1"><label class="block border border-dashed border-line px-4 py-5 text-center text-[12.5px] text-ink2 cursor-pointer hover:border-ink" data-drop="interval">${iv ? `Replace ${esc(iv.file)}` : 'Drop a PG&E Green Button CSV (15-min)'}<input type="file" class="hidden" accept=".csv,text/csv" data-upload="interval" /></label><div class="text-[11px] text-mute mt-1">Parsed in the browser; nothing leaves this machine.</div></div>
+        ${s.tariff ? stat('Rate schedule', esc(s.tariff), 'Facility list; confirm on bill') : stat('Rate class', iv ? (iv.peakKw >= 1000 ? 'B-20 range' : iv.peakKw >= 500 ? 'B-19 range' : 'B-10 range') : pe && pe.hi < 500 ? 'Likely B-10' : 'B-10 or B-19', 'Confirm on bill (PG&E bundled or CleanPowerSF)')}
+        <div class="col-span-2 lg:col-span-1"><label class="block border border-dashed border-line px-4 py-5 text-center text-[12.5px] text-ink2 cursor-pointer hover:border-ink" data-drop="interval">${iv ? `Replace ${esc(iv.file)}` : `Drop a ${esc(s.utility)} Green Button CSV (15-min)`}<input type="file" class="hidden" accept=".csv,text/csv" data-upload="interval" /></label><div class="text-[11px] text-mute mt-1">Parsed in the browser; nothing leaves this machine.</div></div>
       </dl></div>`;
     const opts = (tick, label) => ({ responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#06162b', cornerRadius: 0, padding: 8, callbacks: { label } } },
       scales: { x: { grid: { display: false }, ticks: { color: '#7d828b', font: { family: 'Inter', size: 10 }, maxTicksLimit: 12, maxRotation: 0 }, border: { color: '#d3cecd' } }, y: { beginAtZero: true, grid: { color: '#efece9' }, border: { display: false }, ticks: { color: '#7d828b', font: { family: 'Inter', size: 10 }, callback: tick } } } });
-    R.charts.bench = new Chart($('#bench-chart'), { type: 'bar', data: { labels: b.map((x) => x.year), datasets: [{ data: b.map((x) => x.kwh || 0), backgroundColor: b.map((x) => (x.kwh ? '#3c6390' : '#d3cecd')), maxBarThickness: 30 }] },
+    if (b.length) R.charts.bench = new Chart($('#bench-chart'), { type: 'bar', data: { labels: b.map((x) => x.year), datasets: [{ data: b.map((x) => x.kwh || 0), backgroundColor: b.map((x) => (x.kwh ? '#3c6390' : '#d3cecd')), maxBarThickness: 30 }] },
       options: Object.assign(opts((v) => fmt(v / 1e6, 1) + ' GWh', (c) => (b[c.dataIndex].kwh ? `${fmt(c.parsed.y)} kWh` : `Not reported: ${b[c.dataIndex].status}`)), { onClick: (e, els) => { if (els.length) openSource(s, `Benchmarking ${b[els[0].index].year}`, `Benchmarking ${b[els[0].index].year}`); } }) });
     if (iv) {
       R.charts.peak = new Chart($('#peak-chart'), { type: 'line', data: { labels: iv.peakDay.map((p) => p.t), datasets: [{ data: iv.peakDay.map((p) => p.kw), borderColor: '#3c6390', borderWidth: 1.75, pointRadius: 0, tension: 0.2 }] }, options: opts((v) => fmt(v) + ' kW', (c) => `${fmt(c.parsed.y, 1)} kW`) });
       R.charts.month = new Chart($('#month-chart'), { type: 'bar', data: { labels: iv.monthly.map((m) => m.m), datasets: [{ data: iv.monthly.map((m) => m.kw), backgroundColor: '#3c6390', maxBarThickness: 24 }] }, options: opts((v) => fmt(v) + ' kW', (c) => `${fmt(c.parsed.y, 1)} kW`) });
     }
   }
-  function parseInterval(text, name) {
-    const lines = text.split(/\r?\n/).filter((l) => l.trim());
-    const hi = lines.findIndex((l) => /date|time|start/i.test(l) && /(kwh|kw|usage|value|import)/i.test(l));
-    if (hi < 0) return null;
-    const split = (l) => { const out = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === ',' && !q) { out.push(cur.trim()); cur = ''; } else cur += ch; } out.push(cur.trim()); return out; };
-    const H = split(lines[hi]).map((h) => h.toLowerCase());
-    const iDate = H.findIndex((h) => /date/.test(h)), iStart = H.findIndex((h) => /start/.test(h) && !/date/.test(h));
-    const iVal = H.findIndex((h) => /(usage|import|kwh|value)/.test(h) && !/cost/.test(h)), iKw = H.findIndex((h) => /\bkw\b(?!h)/.test(h));
-    if (iDate < 0 || (iVal < 0 && iKw < 0)) return null;
-    const rows = [];
-    lines.slice(hi + 1).forEach((l) => { const c = split(l); if (c.length < 2) return; const ts = new Date(`${c[iDate]}${iStart >= 0 ? 'T' + c[iStart] : ''}`); const v = parseFloat(String(iKw >= 0 ? c[iKw] : c[iVal]).replace(/[^0-9.\-]/g, '')); if (!isNaN(ts) && !isNaN(v)) rows.push({ ts, v }); });
-    if (rows.length < 96) return null;
-    rows.sort((a, b) => a.ts - b.ts);
-    const minutes = Math.round((rows[1].ts - rows[0].ts) / 60000) || 15;
-    const kw = rows.map((r) => ({ ts: r.ts, kw: iKw >= 0 ? r.v : (r.v * 60) / minutes }));
-    let pk = kw[0]; kw.forEach((r) => { if (r.kw > pk.kw) pk = r; });
-    const avg = kw.reduce((a, r) => a + r.kw, 0) / kw.length;
-    const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const months = {}; kw.forEach((r) => { const k = dk(r.ts).slice(0, 7); months[k] = Math.max(months[k] || 0, r.kw); });
-    const top = kw.slice().sort((a, b) => b.kw - a.kw).slice(0, Math.max(10, Math.round(kw.length * 0.01)));
-    const hours = {}; top.forEach((r) => { hours[r.ts.getHours()] = (hours[r.ts.getHours()] || 0) + 1; });
-    const hs = Object.entries(hours).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h]) => `${String(h).padStart(2, '0')}:00`).join(', ');
-    return { file: name, count: kw.length, minutes, start: dk(kw[0].ts), end: dk(kw[kw.length - 1].ts), peakKw: pk.kw, peakAt: pk.ts.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }), loadFactor: avg / pk.kw,
-      peakDay: kw.filter((r) => dk(r.ts) === dk(pk.ts)).map((r) => ({ t: r.ts.toTimeString().slice(0, 5), kw: +r.kw.toFixed(1) })), monthly: Object.entries(months).map(([m, v]) => ({ m, kw: +v.toFixed(1) })), peakHours: `top 1% of intervals mostly at ${hs}` };
-  }
-  window.EQ_parseInterval = parseInterval;
+  const parseInterval = (text, name) => window.EQ_parseInterval(text, name);
   function readFile(file, asText) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; asText ? r.readAsText(file) : r.readAsDataURL(file); }); }
   async function thumbOf(file) {
     if (!/^image\//.test(file.type)) return null;
@@ -869,10 +974,11 @@
     openModal({
       title: esc(d.label), subtitle: `${secName(d.sec) || EQ.FIELD.name} · weight ${d.pts}${d.severity ? ` · ${d.severity === 'critical' ? 'blocks next step' : 'open'}` : ''}`, size: 'max-w-3xl',
       body: `<div class="text-[11.5px] text-mute">Value</div><div class="text-[16px] text-ink num mt-0.5">${d.value != null ? esc(d.value) : '—'}</div>
-        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[12px] text-ink2">${statusTag(d)}${d.value != null ? `<span>${confLabel[d.conf] || ''}</span>` : ''}<span>Owner: ${d.owner === 'fm' ? 'facility' : 'EQORE'}</span>${d.verified && d.verifiedBy ? `<span>Confirmed by ${esc(d.verifiedBy)}</span>` : ''}</div>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[12px] text-ink2">${statusTag(d)}${d.value != null ? `<span>${confLabel[d.conf] || ''}</span>` : ''}<span>Owner: ${{ fm: 'facility', utility: 'utility (EQORE requests)' }[d.owner] || 'EQORE'}</span>${d.verified && d.verifiedBy ? `<span>Confirmed by ${esc(d.verifiedBy)}</span>` : ''}</div>
         <div class="eyebrow mt-6 mb-2">Primary source</div>
         ${file ? `<button class="w-full flex items-center gap-3 p-3 border border-line hover:border-ink text-left mb-2" data-action="open-file" data-file="${file.id}">${ficon(file.type)}<span class="min-w-0 flex-1"><span class="block text-[13px] text-ink font-mono truncate">${esc(file.name)}</span><span class="block text-[11.5px] text-mute">${esc(file.origin)}</span></span><span>→</span></button>` : ''}
         ${d.src ? sourceHTML(s, d.src, d.srcUrl) : '<div class="text-[12.5px] text-mute">Not in public records. Needed: ' + esc(d.ask) + '</div>'}
+        ${siteGapHTML(d)}
         ${d.rfi ? `<div class="text-[12px] text-ink2 mt-3">Requested from ${esc(d.rfi.to)} by ${esc(d.rfi.channel)} · ${fmtDT(d.rfi.at)}</div>` : ''}`,
       footer: (st === 'missing' || st === 'requested')
         ? `${d.owner === 'fm' && st === 'missing' ? `<button class="btn btn-secondary" data-action="open-rfi" data-dp="${d.key}">Text request</button>` : ''}<button class="btn btn-primary" data-action="resolve-dp" data-dp="${d.key}">Enter value</button>`
@@ -899,7 +1005,7 @@
         <label class="block text-[12px] text-mute mb-1" for="resolve-val">Value</label>
         <input id="resolve-val" class="field w-full h-10 px-3 text-[14px]" value="${esc(d.value ?? d.pendingValue)}" />
         <label class="block text-[12px] text-mute mb-1 mt-4" for="resolve-src">Source</label>
-        <input id="resolve-src" class="field w-full h-10 px-3 text-[14px]" value="${d.owner === 'eqore' ? (d.key === 'ahjPreApp' ? 'Meeting minutes' : 'Portal confirmation') : 'Call with facility contact'}" />
+        <input id="resolve-src" class="field w-full h-10 px-3 text-[14px]" value="${d.owner === 'utility' ? 'Utility response' : d.owner === 'eqore' ? (d.key === 'ahjPreApp' ? 'Meeting minutes' : 'Portal confirmation') : 'Call with facility contact'}" />
         <label class="flex items-center gap-2 mt-4 text-[13px] text-ink2"><input type="checkbox" id="resolve-verify" class="w-4 h-4 accent-[#06162b]" checked /> Confirm as ${esc(EQ.TEAM[EQ.CURRENT_USER].name)}</label>`,
       footer: `<button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="confirm-resolve" data-dp="${d.key}">Save</button>`,
       onMount: (r) => setTimeout(() => $('#resolve-val', r).focus(), 30),
@@ -933,18 +1039,20 @@
     const rel = relevant(s);
     const fmItems = rel.filter((d) => d.owner === 'fm' && ['missing', 'requested'].includes(dpStatus(d)));
     const eqItems = rel.filter((d) => d.owner === 'eqore' && ['missing', 'requested'].includes(dpStatus(d)));
+    const utItems = rel.filter((d) => d.owner === 'utility' && ['missing', 'requested'].includes(dpStatus(d)));
     const review = rel.filter((d) => dpStatus(d) === 'review');
     const row = (d, ctl) => `<li class="px-5 py-2.5 border-t border-line2 flex items-start gap-3 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}">
-        <div class="min-w-0 flex-1"><div class="text-[13px] text-ink leading-snug">${esc(d.owner === 'fm' && dpStatus(d) !== 'review' ? d.ask : d.label)}</div><div class="mt-0.5">${statusTag(d)}</div></div>
+        <div class="min-w-0 flex-1"><div class="text-[13px] text-ink leading-snug">${esc(['fm', 'utility'].includes(d.owner) && dpStatus(d) !== 'review' ? d.ask : d.label)}</div><div class="mt-0.5">${statusTag(d)}</div></div>
         <div data-stop class="shrink-0 pt-0.5 flex items-center gap-1.5">${ctl}</div></li>`;
     const group = (title, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-2 text-[11.5px] text-mute">${title}</div><ul>${items.map((d) => row(d, ctl(d))).join('')}</ul>` : '';
     $('#site-requests').innerHTML = `
-      <div class="panel-head"><div class="eyebrow flex-1">Open items</div><span class="text-[11px] text-mute num">${fmItems.length + eqItems.length + review.length}</span></div>
+      <div class="panel-head"><div class="eyebrow flex-1">Open items</div><span class="text-[11px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length}</span></div>
       ${group('From the facility', fmItems, (d) => `<label class="btn btn-ghost btn-xs cursor-pointer">Upload<input type="file" class="hidden" data-upload="${d.key}" /></label>${dpStatus(d) === 'missing' ? `<input type="checkbox" class="w-4 h-4 accent-[#06162b]" data-rfi-pick="${d.key}" checked aria-label="Include in text request" />` : ''}`)}
       ${fmItems.some((d) => dpStatus(d) === 'missing') ? `<div class="px-5 py-3"><button class="btn btn-primary w-full justify-between" data-action="open-rfi">Text the facility for checked items<span>→</span></button></div>` : ''}
+      ${group('From the utility (EQORE requests)', utItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}
       ${group('EQORE', eqItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}
       ${group('Needs engineer confirmation', review, (d) => `<button class="toggle" role="switch" aria-checked="false" aria-label="Confirm ${esc(d.label)}" data-action="toggle-verify" data-dp="${d.key}"></button>`)}
-      ${!fmItems.length && !eqItems.length && !review.length ? `<div class="px-5 py-6 text-[13px] text-mute">No open items.</div>` : ''}`;
+      ${!fmItems.length && !eqItems.length && !utItems.length && !review.length ? `<div class="px-5 py-6 text-[13px] text-mute">No open items.</div>` : ''}`;
   }
   function openRfiModal(s, onlyKey) {
     const gaps = relevant(s).filter((d) => d.owner === 'fm' && dpStatus(d) === 'missing');
@@ -953,7 +1061,7 @@
     if (!picked.size) gaps.forEach((d) => picked.add(d.key));
     const fm = s.fm || {};
     const link = `upload.eqore.com/${s.code.toLowerCase()}-${(hashStr(s.id + Date.now()) % 46656).toString(36)}`;
-    const msg = (keys, name) => `${name ? name.split(' ')[0] + ', t' : 'T'}his is ${EQ.TEAM[s.eng].name.split(',')[0]} with EQORE about battery storage at ${s.address}. To evaluate the site without a visit, could you send:\n${keys.map((k, i) => `${i + 1}. ${s.dps.find((d) => d.key === k).ask}`).join('\n')}\nPhone photos are fine. Upload here: https://${link}`;
+    const msg = (keys, name) => `${name ? name.split(' ')[0] + ', t' : 'T'}his is ${EQ.TEAM[s.eng].name.split(',')[0]} with EQORE about battery storage at ${s.address}. To evaluate the site without a visit, could you send:\n${keys.map((k, i) => `${i + 1}. ${s.dps.find((d) => d.key === k).ask}`).join('\n')}\nPhone photos are fine. Please don't open equipment, remove covers or climb to photograph a transformer; labels you can see from the floor are enough. Upload here: https://${link}`;
     openModal({
       title: 'Text the facility', subtitle: `${esc(s.name)} · missing photos and data`, size: 'max-w-4xl',
       body: `<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -1058,7 +1166,7 @@
         <tr class="!cursor-default">
           <td><div class="text-ink">${esc(d.name)}</div><div class="text-[11px] text-mute">${d.permitNo ? `${esc(d.permitNo)}${d.permitNote ? ' · ' + esc(d.permitNote) : ''} · ` : ''}${d.updated ? `Updated ${fmtDate(d.updated)}` : ''}</div></td>
           <td class="text-[12px] text-ink2 whitespace-nowrap">${esc(d.ref)}</td>
-          <td class="text-[12px] text-ink2 whitespace-nowrap num">${d.due === 'end' ? '—' : esc(EQ.STAGES[d.due].n)}</td>
+          <td class="text-[12px] text-ink2 whitespace-nowrap num">${d.due === 'end' ? '—' : esc(EQ.STAGES[d.due].label)}</td>
           <td>${d.status === 'na' ? tag('muted', DOC_STATUS.na[0]) : `<select class="field h-7 pl-2 text-[12px]" data-doc="${d.key}" aria-label="Status of ${esc(d.name)}">${['not_started', 'in_progress', 'submitted', 'complete'].map((k) => `<option value="${k}" ${d.status === k ? 'selected' : ''}>${DOC_STATUS[k][0]}</option>`).join('')}</select>`}</td>
           <td class="text-[11.5px] text-ink2">${d.evidence ? `<span class="font-mono">${esc(d.evidence.file)}</span><div class="text-mute">${esc(d.evidence.by)}</div>` : d.status === 'complete' ? '<span class="text-alert">No evidence</span>' : '—'}</td>
         </tr>`).join('')).join('')}</tbody></table></div>
@@ -1076,23 +1184,16 @@
       footer: `<button class="btn btn-ghost" data-action="cancel-evidence">Cancel</button><button class="btn btn-primary" data-action="save-evidence" data-doc="${key}">Mark complete</button>`,
     });
   }
-  function renderResponderCard(s) {
-    const live = stageIdx(s) >= EQ.stageIdx('install');
-    $('#site-responder').innerHTML = `
-      <div class="panel-head"><div class="eyebrow flex-1">Site placard</div></div>
-      <div class="p-5 flex gap-4 items-start">
-        <div id="qr" class="shrink-0 border border-line p-1.5 bg-white" style="width:108px;height:108px"></div>
-        <div class="min-w-0 text-[12.5px] text-ink2 leading-relaxed">
-          QR posted at the disconnect. Opens the public emergency page: system, location, shutdown, contacts. AHJ, facility and EQORE sign in for the full record.
-          <div class="flex flex-wrap gap-2 mt-3"><a class="btn btn-secondary btn-xs" href="#/responder/${s.id}">Open public page</a><button class="btn btn-ghost btn-xs" data-action="print-placard">Print</button></div>
-          ${live ? '' : '<div class="text-[11.5px] text-mute mt-2">Posted at installation (NFPA 855 7.1.3).</div>'}
-        </div>
-      </div>`;
-    const el = $('#qr');
-    if (window.QRCode) { try { new QRCode(el, { text: `${location.origin}${location.pathname}#/responder/${s.id}`, width: 94, height: 94, colorDark: '#06162b', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); } catch (e) { el.textContent = 'QR unavailable'; } }
-  }
   function renderCodes(s) {
-    const ia = (REF().interconnection || {})['PG&E'];
+    const ia = (REF().interconnection || {})[s.utility];
+    if (!s.sf) {
+      const F = (id) => EQ.addrField(s, id), row = (id, n) => { const f = F(id); return EQ.addrHas(f) ? [n || f.label, f.source_url, String(f.display).slice(0, 140), id] : null; };
+      const codes = (REF().codes || []).filter((c) => !c.region || c.region === s.region).map((c) => [c.code, c.url, c.scope]);
+      const items = [row('z_jur', 'Jurisdiction'), row('d_fire', 'Fire authority'), row('z_zone', 'Zoning'), row('d_code'), ...codes, ia ? [ia.name, ia.url, ia.summary] : null].filter(Boolean);
+      $('#site-codes').innerHTML = `<div class="panel-head"><div class="eyebrow flex-1">AHJ, codes &amp; utility</div></div>
+        <ul class="text-[12.5px]">${items.map(([n, u, d, id]) => `<li class="px-5 py-2.5 border-t border-line2 first:border-t-0"><div>${id ? `<button class="link" data-action="source" data-src="${EQ.addrSrc(id)}" data-title="${esc(n)}">${esc(n)}</button>` : extLink(u, n)}</div><div class="text-[11.5px] text-ink2">${esc(d)}</div></li>`).join('')}</ul>`;
+      return;
+    }
     const items = [
       ['SF Department of Building Inspection', 'https://sf.gov/departments/department-building-inspection', 'Building and electrical permits, inspections'],
       ['SF Fire Department', 'https://sf-fire.org/', 'Fire permit and ESS review (CFC §1207)'],
@@ -1157,12 +1258,14 @@
   }
   function fileParams(s, f) {
     if (f.preview === 'permits') return [['Records', `${rec(s).permits.length}`], ['Building', `${rec(s).permits.filter((p) => p.kind === 'Building').length}`], ['Electrical', `${rec(s).permits.filter((p) => p.kind === 'Electrical').length}`], ['Snapshot', EQ.ASOF]];
+    if (f.preview === 'addr') { const m = EQ.addrDoc(s).record.summary; return [['Fields', `${EQ.addrDoc(s).record.fields.length}`], ['Required filled', `${m.required_done_pct}%`], ['Sources', `${EQ.addrDoc(s).record.sources.length}`], ['Built', f.date]]; }
     if (f.preview === 'bench') { const l = latestKwh(s); return [['Years', `${rec(s).benchmark.length}`], ['Latest reported', l ? `${l.year}: ${fmt(l.kwh)} kWh` : '—'], ['Floor area', `${fmt(s.floorArea)} sf`], ['Built', `${s.yearBuilt}`]]; }
     return [['File', f.name], ['Size', f.size], ['Received', f.date]];
   }
   function filePreview(s, f) {
     if (f.preview === 'permits') return `<div class="max-h-[420px] overflow-y-auto">${rec(s).permits.slice(0, 40).map((p) => permitCard(s, p)).join('')}</div>`;
     if (f.preview === 'bench') return benchTable(s, null);
+    if (f.preview === 'addr') return addrSummaryHTML(s) + `<div class="mt-3 max-h-[420px] overflow-y-auto">${EQ.addrDoc(s).record.sources.map((x) => `<div class="border-t border-line2 py-2 text-[12px]"><div class="text-ink">${extLink(x.url, x.source_label)}</div><div class="text-mute">${esc(x.vintage || '')} · ${esc(x.license || '')} · ${esc(x.status)}</div><div class="text-ink2">${esc(x.summary || '')}</div></div>`).join('')}</div>`;
     if (f.thumb) return `<img src="${f.thumb}" alt="${esc(f.name)}" class="w-full border border-line" />`;
     return `<div class="paper-doc p-6 text-[13px] text-ink2">${esc(f.name)} · ${esc(f.size)}. Preview not available for this file type; values are entered from it by the engineer.</div>`;
   }
@@ -1232,7 +1335,7 @@
     const res = S.sites.filter((s) => matchesQuery(s, q)).slice(0, 6);
     box.innerHTML = res.length ? res.map((s) => `<button class="w-full flex items-baseline justify-between gap-3 px-3 py-2.5 hover:bg-paper text-left border-t border-line2 first:border-t-0" data-action="open-site" data-id="${s.id}">
         <span class="min-w-0"><span class="block text-[13px] text-ink truncate">${esc(s.name)}</span><span class="block text-[11.5px] text-mute truncate">${esc(s.address)}, ${esc(s.city)} · APN <span class="font-mono">${esc(s.apn)}</span></span></span>
-        <span class="text-[11px] text-mute shrink-0">${EQ.STAGES[s.stage].n}</span></button>`).join('') : `<div class="px-3 py-4 text-[13px] text-mute">No match for “${esc(q)}”</div>`;
+        <span class="text-[11px] text-mute shrink-0">${esc(stepLabel(s))}</span></button>`).join('') : `<div class="px-3 py-4 text-[13px] text-mute">No match for “${esc(q)}”</div>`;
     box.classList.remove('hidden');
   }
   const currentSite = () => (S.route.view === 'site' ? site(S.route.id) : null);
@@ -1254,6 +1357,11 @@
         if (dp) setTimeout(() => { const row = $(`[data-dp-row="${dp}"]`); if (row) { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); } }, 250);
         break;
       }
+      case 'addr-section': if (s) { S.addrSection = S.addrSection === el.dataset.sec || (S.addrSection == null && el.dataset.sec === [...new Set(EQ.addrDoc(s).record.fields.map((f) => f.section))][0]) ? '' : el.dataset.sec; renderAddr(s); } break;
+      case 'set-intake': if (s) {
+        const i = +el.dataset.i; s.intake = i; log(s, `Step set to ${EQ.INTAKE[i].n} ${EQ.INTAKE[i].label}`); persist();
+        $('#site-intake').innerHTML = intakeHTML(s); toast(`${esc(s.name)} · ${esc(EQ.INTAKE[intakeIdx(s)].label)}`);
+      } break;
       case 'stage-filter':
         S.filters.stage = S.filters.stage === el.dataset.stage && el.dataset.stage !== 'all' ? 'all' : el.dataset.stage;
         if (S.route.view !== 'pipeline') go(null); else { renderStageRail(); renderPipeline(); }
@@ -1266,13 +1374,13 @@
       case 'clear-all-filters':
         S.filters = { q: '', region: 'all', stage: 'all' }; $('#global-search').value = ''; $('#region-filter').value = 'all';
         renderStageRail(); renderPipeline(); fitRegion('all'); break;
-      case 'sort': { const k = el.dataset.key; S.sort = S.sort.key === k ? { key: k, dir: S.sort.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: ['name', 'utility', 'owner', 'stage'].includes(k) ? 'asc' : 'desc' }; renderDirectory(); break; }
+      case 'sort': { const k = el.dataset.key; S.sort = S.sort.key === k ? { key: k, dir: S.sort.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: ['name', 'utility', 'owner', 'intake'].includes(k) ? 'asc' : 'desc' }; renderDirectory(); break; }
       case 'map-jump': fitRegion(el.dataset.region); break;
       case 'map-base': S.mapBase = el.dataset.base; Object.values(R.baseLayers).forEach((l) => R.map.removeLayer(l)); R.baseLayers[S.mapBase].addTo(R.map); syncMapButtons(); break;
       case 'export-directory': exportDirectory(); break;
       case 'reset-demo':
         try { localStorage.removeItem(STORE_KEY); } catch (err) { /* ignore */ }
-        S.sites = EQ.buildSites(); S.chart.threshold = {}; $('#user-menu').classList.add('hidden'); onRoute(); toast('Demo data reset'); break;
+        S.sites = EQ.buildSites(); S.sites = S.sites.concat(EQ.buildLeadSites(new Set(S.sites.map((x) => x.id)))); S.chart.threshold = {}; $('#user-menu').classList.add('hidden'); onRoute(); toast('Demo data reset'); break;
       case 'shortcuts':
         $('#user-menu').classList.add('hidden');
         openModal({ title: 'Keyboard shortcuts', size: 'max-w-md', body: `<dl class="text-[13px] border border-line">${[['/', 'Search'], ['Esc', 'Close dialog'], ['g p', 'Projects'], ['1–4', 'Jump to section']].map(([k, v]) => `<div class="flex justify-between px-4 py-2.5 border-t border-line2 first:border-t-0"><dt>${v}</dt><dd><kbd class="font-mono text-[11px] border border-line px-1.5">${k}</kbd></dd></div>`).join('')}</dl>` });
@@ -1353,8 +1461,8 @@
   }
   function exportDirectory() {
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['Facility', 'Address', 'APN', 'Type', 'Floor area sf', 'Latest grid kWh', 'Year', 'Risks', 'Design readiness', 'Step'].join(',')]
-      .concat(sortedSites(filteredSites()).map((s) => { const l = latestKwh(s) || {}; return [s.name, `${s.address}, ${s.city}`, s.apn, s.sector, s.floorArea, l.kwh, l.year, s.findings.filter((f) => f.sev === 'risk').length, score(s), stageLabel(s.stage)].map(q).join(','); }));
+    const rows = [['Facility', 'Address', 'APN', 'Type', 'Floor area sf', 'Latest grid kWh', 'Year', 'Risks', 'Design readiness', 'Step', 'Needs action'].join(',')]
+      .concat(sortedSites(filteredSites()).map((s) => { const l = latestKwh(s) || {}; return [s.name, `${s.address}, ${s.city}`, s.apn, s.sector, s.floorArea, l.kwh, l.year, s.findings.filter((f) => f.sev === 'risk').length, score(s), EQ.INTAKE[intakeIdx(s)].label, nextAction(s).text].map(q).join(','); }));
     downloadBlob('eqore_leads.csv', rows.join('\n')); toast('Exported');
   }
   const search = $('#global-search');
@@ -1382,6 +1490,13 @@
     if (S.route.view === 'site' && /^[1-4]$/.test(e.key) && !$('#modal')) { const t = $(`#section-${EQ.SECTIONS[+e.key - 1].key}`); if (t) t.scrollIntoView({ behavior: 'smooth' }); }
   });
   window.addEventListener('hashchange', onRoute);
+  window.addEventListener('storage', (e) => {
+    if (e.key !== EQ.LEADS_KEY) return;
+    const fresh = EQ.buildLeadSites(new Set(S.sites.map((x) => x.id)));
+    if (!fresh.length) return;
+    S.sites = S.sites.concat(fresh); persist(); onRoute();
+    toast(`New lead: ${esc(fresh.map((x) => x.name).join(', '))}`);
+  });
   window.addEventListener('resize', () => R.map && R.map.invalidateSize());
   onRoute();
 })();

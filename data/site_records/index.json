@@ -1,0 +1,107 @@
+[
+  {
+    "file": "eversource_ma__120-lowland-st-holliston-ma.json",
+    "site_id": "120-lowland-st-holliston-ma",
+    "address": "120 Lowland St, Holliston, MA",
+    "utility": "eversource_ma",
+    "generated_at": "2026-11-07T22:10:34+00:00"
+  },
+  {
+    "file": "eversource_ma__16-commerce-way-woburn-ma.json",
+    "site_id": "16-commerce-way-woburn-ma",
+    "address": "16 Commerce Way, Woburn, MA",
+    "utility": "eversource_ma",
+    "generated_at": "2026-11-07T22:10:38+00:00"
+  },
+  {
+    "file": "eversource_ma__275-cedar-hill-st-marlborough-ma.json",
+    "site_id": "275-cedar-hill-st-marlborough-ma",
+    "address": "275 Cedar Hill St, Marlborough, MA",
+    "utility": "eversource_ma",
+    "generated_at": "2026-11-07T22:10:37+00:00"
+  },
+  {
+    "file": "eversource_ma__60-manley-st-brockton-ma.json",
+    "site_id": "60-manley-st-brockton-ma",
+    "address": "60 Manley St, Brockton, MA",
+    "utility": "eversource_ma",
+    "generated_at": "2026-11-07T22:10:25+00:00"
+  },
+  {
+    "file": "nationalgrid_ma__144-western-ave-lowell-ma.json",
+    "site_id": "144-western-ave-lowell-ma",
+    "address": "144 Western Ave, Lowell, MA",
+    "utility": "nationalgrid_ma",
+    "generated_at": "2026-11-07T22:11:05+00:00"
+  },
+  {
+    "file": "pge__1401-yosemite-ave-san-francisco-ca-94124.json",
+    "site_id": "yosemite-1401",
+    "address": "1401 Yosemite Ave, San Francisco, CA 94124",
+    "utility": "pge",
+    "generated_at": "2026-11-07T21:11:29+00:00"
+  },
+  {
+    "file": "pge__1600-donner-ave-san-francisco-ca-94124.json",
+    "site_id": "donner-1600",
+    "address": "1600 Donner Ave, San Francisco, CA 94124",
+    "utility": "pge",
+    "generated_at": "2026-11-07T21:11:23+00:00"
+  },
+  {
+    "file": "pge__1940-lundy-ave-san-jose-ca.json",
+    "site_id": "1940-lundy-ave-san-jose-ca",
+    "address": "1940 Lundy Ave, San Jose, CA",
+    "utility": "pge",
+    "generated_at": "2026-11-07T22:10:22+00:00"
+  },
+  {
+    "file": "pge__2050-galvez-ave-san-francisco-ca-94124.json",
+    "site_id": "galvez-2050",
+    "address": "2050 Galvez Ave, San Francisco, CA 94124",
+    "utility": "pge",
+    "generated_at": "2026-11-07T21:11:26+00:00"
+  },
+  {
+    "file": "pge__2150-cesar-chavez-st-san-francisco-ca-94124.json",
+    "site_id": "cesar-chavez-2150",
+    "address": "2150 Cesar Chavez St, San Francisco, CA 94124",
+    "utility": "pge",
+    "generated_at": "2026-11-07T21:11:32+00:00"
+  },
+  {
+    "file": "pge__2250-livingston-st-oakland-ca.json",
+    "site_id": "2250-livingston-st-oakland-ca",
+    "address": "2250 Livingston St, Oakland, CA",
+    "utility": "pge",
+    "generated_at": "2026-11-07T22:10:27+00:00"
+  },
+  {
+    "file": "pge__2448-industrial-pkwy-west-hayward-ca-94545.json",
+    "site_id": "2448-industrial-pkwy-west-hayward-ca-94545",
+    "address": "2448 Industrial Pkwy West, Hayward, CA 94545",
+    "utility": "pge",
+    "generated_at": "2026-11-07T22:10:38+00:00"
+  },
+  {
+    "file": "pge__380-littlefield-ave-south-san-francisco-ca.json",
+    "site_id": "380-littlefield-ave-south-san-francisco-ca",
+    "address": "380 Littlefield Ave, South San Francisco, CA",
+    "utility": "pge",
+    "generated_at": "2026-11-07T22:10:34+00:00"
+  },
+  {
+    "file": "pge__44800-fremont-blvd-fremont-ca.json",
+    "site_id": "44800-fremont-blvd-fremont-ca",
+    "address": "44800 Fremont Blvd, Fremont, CA",
+    "utility": "pge",
+    "generated_at": "2026-11-07T22:10:30+00:00"
+  },
+  {
+    "file": "pge__888-tennessee-st-san-francisco-ca-94107.json",
+    "site_id": "tennessee-888",
+    "address": "888 Tennessee St, San Francisco, CA 94107",
+    "utility": "pge",
+    "generated_at": "2026-11-07T21:11:19+00:00"
+  }
+]

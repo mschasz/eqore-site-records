@@ -29,7 +29,8 @@ Rate schedule, ownership, service size and existing solar or storage are not in 
 ## Projects view
 
 - US map with state and county boundaries (US Census via us-atlas). EQORE's states (CA, MA, NH) are shaded and counties with leads are highlighted. Leads cluster by county until you zoom in.
-- Step rail for EQORE's six steps, a "needs action" queue, and a sortable facilities table with an overview status per area.
+- Sortable facilities table with a "needs action" column (next action, open counts and intake step) and an overview status per area.
+- Each site moves through intake (lead form, sales call, site data collection started and completed), then a gate to Proposal and the delivery steps.
 
 ## Site record
 
@@ -65,3 +66,22 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ## Site records data (`site_records/`)
 
 Address-level site records built from public, keyless sources (Census, MassGIS, LightBox statewide parcels, DataSF, City of Hayward GIS, CAL FIRE, CGS, USGS, CEC, PG&E GRIP). One JSON per facility plus `index.json` and a `records.js` bundle the site can load directly. Every value carries its source, vintage and confidence; parcels are never auto-selected. Add an address from the Actions tab (*Site records* → Run workflow) or edit `site_records/facilities.json`. See [site_records/README.md](site_records/README.md). Generator: `eqore_site/` (`python -m eqore_site.export`).
+
+### How the site page uses the address records
+
+- Every project has an **Address lookup** panel built from `site_records/` (generated from the address alone). It groups the record's fields by section, with status, source, vintage and confidence, and lists what is still to collect, by whom, and the parcel candidates. Click any row for the field, its source link and related flags.
+- Facility-list projects (10 sites in `site_records/facilities.json`) are added as projects. Their customer values (service, rate, peak, system) fill the matching data points as *needs confirmation*. Their overview tiles, summary, AHJ, fire authority, codes and contacts come from the record.
+- The record's flags become findings. Hazard flags, lot-line straddles and utility disagreements are marked as risks; the rest are notes.
+- `./site_record` (utility hosting capacity) has also been run for these addresses. Eversource has no adapter yet, so those records list every field as a gap.
+
+
+## Lead form (`lead/`)
+
+A separate, lightweight page in the same design for first outreach: `http://127.0.0.1:5173/lead/` when served from the repo root.
+
+- **Modeled on** EQORE's free savings assessment (monthly bill, state, work email, phone; "Request the full assessment") and Furo's planner (upload a load profile, enter the location, get sizing).
+- **Inputs:** facility address, name, type, size, hours, owned or leased, existing DER; state, utility, rate schedule, monthly bill, peak; bills, 15-minute interval CSV (parsed in the browser) and photos; contact.
+- **Live checks from the address:** US Census geocoder (JSONP), PG&E ICA or National Grid MA hosting capacity within 150 m, and whether a `site_records/` file exists.
+- **Rough range:** peak (measured, entered, or estimated as 35% of the bill over the tariff's demand cost) × 15–25% shave × the tariff's annual $/kW from `assets/reference.js` × 75% realization; MA adds ConnectedSolutions. Screening only.
+- **Handoff:** submissions are saved to `localStorage['eqore.leads']`. Site Records turns each one into a project at intake step 01 (step 03 when files came with it), fills rate, peak, interval data, feeder, contact and files, and picks up new submissions live if both pages are open. Demo only: nothing leaves the browser.
+- `lead/sample/sample_interval_15min_DEMO.csv` is synthetic data for demos.

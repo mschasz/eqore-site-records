@@ -10,15 +10,22 @@ EQ.REF = window.EQ_PUBLIC || {};
 EQ.REC = window.SF_RECORDS || {};
 EQ.ASOF = window.SF_RECORDS_ASOF || '';
 
-/* EQORE's six-step delivery process (eqore.com/how-it-works). */
-EQ.STAGE_ORDER = ['assessment', 'proposal', 'design', 'interconnection', 'install', 'operate'];
+/* Intake: the four steps a lead goes through before delivery. Steps 03 and 04 follow customer data. */
+EQ.INTAKE = [
+  { n: '01', label: 'Lead form completed' },
+  { n: '02', label: 'Sales call and optimization' },
+  { n: '03', label: 'Site data collection started', auto: true },
+  { n: '04', label: 'Site data collection completed', auto: true },
+];
+/* Delivery steps after intake (eqore.com/how-it-works). Each move is gated in gateChecks (app.js). */
+EQ.STAGE_ORDER = ['intake', 'proposal', 'design', 'interconnection', 'install', 'operate'];
 EQ.STAGES = {
-  assessment:      { n: '01', label: 'Savings assessment' },
-  proposal:        { n: '02', label: 'Proposal' },
-  design:          { n: '03', label: 'Design & permitting' },
-  interconnection: { n: '04', label: 'Utility interconnection' },
-  install:         { n: '05', label: 'Installation & commissioning' },
-  operate:         { n: '06', label: 'Operate & optimize' },
+  intake:          { label: 'Site intake' },
+  proposal:        { label: 'Proposal' },
+  design:          { label: 'Design & permitting' },
+  interconnection: { label: 'Utility interconnection' },
+  install:         { label: 'Installation & commissioning' },
+  operate:         { label: 'Operate & optimize' },
 };
 EQ.stageIdx = (k) => EQ.STAGE_ORDER.indexOf(k);
 
@@ -48,7 +55,7 @@ EQ.STATUS = {
 
 /* EQORE operating states (eqore.com: "MA · NH · CA") and their FIPS codes. */
 EQ.STATES = { ca: { name: 'California', fips: '06' }, ma: { name: 'Massachusetts', fips: '25' }, nh: { name: 'New Hampshire', fips: '33' } };
-EQ.REGIONS = { ca: { label: 'California · PG&E', short: 'California' }, ma: { label: 'Massachusetts', short: 'Massachusetts' }, nh: { label: 'New Hampshire', short: 'New Hampshire' } };
+EQ.REGIONS = { ca: { label: 'California', short: 'California' }, ma: { label: 'Massachusetts', short: 'Massachusetts' }, nh: { label: 'New Hampshire', short: 'New Hampshire' } };
 
 EQ.TEAM = {
   jkim:     { id: 'jkim',     name: 'Jordan Kim',        title: 'Account Executive, West', email: 'jordan.kim@eqore.example',    color: '#446c87' },
@@ -207,8 +214,8 @@ EQ.DP_TEMPLATE = [
   // Electrical service & tie-in (35)
   { key: 'voltage', sec: 'elec', pts: 4, label: 'Service voltage', owner: 'fm', ask: 'Photo of the main switchgear nameplate' },
   { key: 'mainBreaker', sec: 'elec', pts: 5, label: 'Main OCPD, trip unit & GFPE', owner: 'fm', ask: 'Single-line diagram and a photo of the main breaker trip unit' },
-  { key: 'transformer', sec: 'elec', pts: 4, label: 'Service transformer', owner: 'fm', ask: 'Photo of the utility transformer nameplate' },
-  { key: 'faultCurrent', sec: 'elec', pts: 5, label: 'Available fault current & SCCR', owner: 'eqore', ask: 'Request PG&E fault-current letter' },
+  { key: 'transformer', sec: 'elec', pts: 4, label: 'Service transformer', owner: 'utility', ask: 'Request transformer kVA, voltage ratio and impedance from PG&E' },
+  { key: 'faultCurrent', sec: 'elec', pts: 5, label: 'Available fault current & SCCR', owner: 'utility', ask: 'Request PG&E fault-current letter' },
   { key: 'spareBreaker', sec: 'elec', pts: 5, label: 'Point of interconnection', owner: 'fm', ask: 'Photo of the main switchboard with the door open, bus rating label visible' },
   { key: 'metering', sec: 'elec', pts: 3, label: 'Revenue metering', owner: 'fm', ask: 'Photo of the PG&E meter(s) and CT cabinet' },
   { key: 'onsiteGen', sec: 'elec', pts: 3, label: 'Existing generation & storage', owner: 'eqore', ask: 'Confirm existing PV, storage or generators' },
@@ -225,7 +232,7 @@ EQ.DP_TEMPLATE = [
   { key: 'vehicle', sec: 'site', pts: 3, label: 'Vehicle impact protection', owner: 'eqore', ask: 'Review traffic near the equipment area' },
   { key: 'ventilation', sec: 'site', pts: 3, label: 'Enclosure & thermal management', owner: 'eqore', ask: 'Equipment spec' },
   // Permits & interconnection (20)
-  { key: 'feeder', sec: 'perm', pts: 4, label: 'Feeder (PG&E ICA)', owner: 'eqore', ask: 'Look up feeder in PG&E ICA map' },
+  { key: 'feeder', sec: 'perm', pts: 4, label: 'Feeder & hosting capacity', owner: 'eqore', ask: 'Run site_record with the utility from the bill' },
   { key: 'codes', sec: 'perm', pts: 3, label: 'Adopted codes', owner: 'eqore', ask: 'Confirm local amendments' },
   { key: 'permits', sec: 'perm', pts: 4, label: 'Permit history at address', owner: 'eqore', ask: 'Permit history pull' },
   { key: 'interconnect', sec: 'perm', pts: 5, label: 'Interconnection', owner: 'eqore', ask: 'Start Rule 21 application' },
@@ -248,15 +255,45 @@ EQ.peakEstimate = (s) => {
   return { avg, lo: avg / hi, hi: avg / lo, year: l.year, kwh: l.kwh };
 };
 
+/* Utility site records (generated by `./site_record`, see utility_data/README.md). */
+EQ.utilityRecord = (s) => (window.UTILITY_RECORDS || []).find((r) => r.site_id === s.id) || null;
+EQ.UTIL_SRC = 'Utility hosting-capacity record';
+// Fixed site items from the record -> the data point that collects each one.
+EQ.SITE_GAP_DP = {
+  service_voltage_and_configuration: 'voltage', main_service_amps_and_main_breaker: 'mainBreaker', single_line_diagram: 'mainBreaker',
+  bus_rating_and_configuration: 'spareBreaker', spare_breaker_positions_or_bus_space: 'spareBreaker', service_point_and_meter_location: 'metering',
+  transformer_kva_ratio_impedance_age: 'transformer', available_fault_current: 'faultCurrent',
+};
+EQ.SITE_GAP_LABEL = {
+  service_voltage_and_configuration: 'Service voltage and configuration', main_service_amps_and_main_breaker: 'Main service amps and main breaker',
+  single_line_diagram: 'Single-line diagram', bus_rating_and_configuration: 'Bus rating and configuration', spare_breaker_positions_or_bus_space: 'Spare breaker positions or bus space',
+  service_point_and_meter_location: 'Service point and meter location', transformer_kva_ratio_impedance_age: 'Transformer kVA, ratio, impedance, age', available_fault_current: 'Available fault current',
+};
+EQ.utilFmt = (v) => (v == null ? null : `${typeof v.value === 'number' ? v.value.toLocaleString('en-US') : v.value}${v.unit ? ' ' + v.unit : ''}`);
+EQ.utilitySummary = function (r) {
+  const f = r.feeder, h = r.hosting_capacity, fm = EQ.utilFmt;
+  const feeder = fm(f.name) || (f.id ? `Feeder ${fm(f.id)}` : null);
+  if (!feeder) return null;
+  const cap = h.generation || h.load
+    ? `Gen ${fm(h.generation) || 'not published'} / Load ${fm(h.load) || 'not published'}`
+    : 'Hosting capacity not published for this section';
+  const when = h.computed ? ` · data ${h.computed.value}` : '';
+  return [feeder, fm(r.feeder_voltage_kv), cap].filter(Boolean).join(' · ') + when;
+};
+
 EQ.buildDataPoints = function (s) {
   const fmtN = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 });
   const pe = EQ.peakEstimate(s);
+  const P = (EQ.REF.programs || {}), IA = (EQ.REF.interconnection || {})[s.utility];
   const defaults = {
     peakDemand: pe ? [`${fmtN(pe.lo)}–${fmtN(pe.hi)} kW estimated from ${fmtN(pe.kwh)} kWh (${pe.year}) and typical load factor`, `Benchmarking ${pe.year}`, 'partial'] : null,
-    incentive: ['SGIP large-scale storage: PG&E Step 5 closed (Nov 2026)', 'SGIP program metrics', null, 'https://www.selfgenca.com/home/program_metrics/'],
+    incentive: s.region === 'ma'
+      ? [`Mass Save ConnectedSolutions ($${(P.connectedSolutions || {}).dailyPerKw}/kW-summer, daily dispatch) and Clean Peak (225 CMR 21)`, 'Mass Save offering materials', 'partial', (P.connectedSolutions || {}).url]
+      : s.utility === 'PG&E' ? ['SGIP large-scale storage: PG&E Step 5 closed (Nov 2026)', 'SGIP program metrics', null, 'https://www.selfgenca.com/home/program_metrics/'] : null,
     ventilation: ['Outdoor-rated QorePack enclosure with integrated HVAC', 'QorePack cut sheet'],
-    codes: ['2025 SF Building, Electrical and Fire Codes (2025 CBC / CEC / CFC + SF amendments)', 'CA Building Standards Commission', null, 'https://www.dgs.ca.gov/BSC/Codes'],
-    interconnect: ['Not filed · PG&E Rule 21, non-export via Screen I (certified PCS or relay)', 'PG&E Rule 21', null, 'https://www.pge.com/tariffs/assets/pdf/tariffbook/ELEC_RULES_21.pdf'],
+    codes: s.sf ? ['2025 SF Building, Electrical and Fire Codes (2025 CBC / CEC / CFC + SF amendments)', 'CA Building Standards Commission', null, 'https://www.dgs.ca.gov/BSC/Codes']
+      : s.region === 'ma' ? ['780 CMR 10th ed. (2021 IBC) · 527 CMR 1.00 (NFPA 1, 2021) · NFPA 855', 'MA State Building Code', 'partial', 'https://www.mass.gov/handbook/tenth-edition-of-the-ma-state-building-code-780'] : null,
+    interconnect: IA ? [`Not filed · ${IA.name}${s.utility === 'PG&E' ? ', non-export via Screen I (certified PCS or relay)' : ''}`, IA.name, null, IA.url] : null,
   };
   const known = Object.assign({}, defaults, s.known || {});
   return EQ.DP_TEMPLATE.map((t) => {
@@ -268,7 +305,15 @@ EQ.buildDataPoints = function (s) {
       dp.requiresSignoff = k[2] === 'partial';
       dp.reviewNote = k[2] === 'partial' ? 'Partial — confirm with customer documents' : null;
       dp.srcType = /^(BP|EP|Permit|Benchmark)/.test(k[1]) ? 'public' : 'spec';
-    } else if (t.sec !== 'field') dp.severity = t.critical ? 'critical' : 'minor';
+    }
+    const ur = EQ.utilityRecord(s);
+    if (ur && t.key === 'feeder' && EQ.utilitySummary(ur)) {
+      dp.value = EQ.utilitySummary(ur); dp.src = EQ.UTIL_SRC; dp.srcType = 'utility';
+      dp.conf = (ur.match && ur.match.confidence) || 'low'; dp.requiresSignoff = true;
+      dp.reviewNote = 'Matched by proximity; screening values only';
+    }
+    if (ur) dp.siteGaps = ur.site_gaps.filter((g) => EQ.SITE_GAP_DP[g.field] === t.key);
+    if (dp.value == null && t.sec !== 'field') dp.severity = t.critical ? 'critical' : 'minor';
     return dp;
   });
 };
@@ -345,6 +390,12 @@ EQ.buildDocs = function (s) {
    Files: public-record sources for every lead; customer uploads are added in the app.
    --------------------------------------------------------------------------- */
 EQ.buildFiles = function (s) {
+  if (!s.sf) {
+    const d = EQ.ADDR[s.slug]; if (!d) return [];
+    const auto = { name: 'eqore_site', role: 'Address lookup (public, keyless sources)', auto: true };
+    return [{ id: `${s.id}:addr`, key: 'addr', name: `site_record_${s.slug}.json`, type: 'json', cat: 'Public record', uploader: auto, date: d.record.generated_at.slice(0, 10),
+      origin: `${d.record.sources.length} public sources from the address`, conf: 'high', confLabel: 'Public records', size: `${d.record.fields.length} fields`, preview: 'addr', dps: ['codes', 'interconnect', 'feeder'] }];
+  }
   const auto = { name: 'DataSF', role: 'City of San Francisco open data', auto: true };
   const r = EQ.REC[s.apn] || { permits: [], benchmark: [] };
   return [
@@ -357,6 +408,19 @@ EQ.initials = (n) => n.replace(/,.*$/, '').split(/\s+/).filter(Boolean).slice(0,
 
 EQ.buildContacts = function (s) {
   const eng = EQ.TEAM[s.eng], sales = EQ.TEAM[s.sales];
+  if (!s.sf) {
+    const F = (id) => EQ.addrField(s, id), has = (id) => EQ.addrHas(F(id)), IA = (EQ.REF.interconnection || {})[s.utility] || {};
+    const jur = has('z_jur') ? F('z_jur').display.split(',')[0] : `${s.city}`;
+    const fire = has('d_fire') ? F('d_fire').display : 'Fire authority not confirmed';
+    return [
+      { id: 'fm', group: 'Customer', role: 'Facility contact', name: 'Not yet identified', title: 'Add when known', org: s.tenant, editable: true, holds: ['Bills and interval data', 'Electrical room access', 'Existing drawings'], last: '—', mobile: true },
+      { id: 'bo', group: 'AHJ', role: 'Building & electrical', name: `${jur} building department`, title: 'Permits, plan review, inspections', agency: true, holds: ['Building and electrical permits', 'Final inspection'], last: '—' },
+      { id: 'fire', group: 'AHJ', role: 'Fire marshal', name: fire.split(/[.(]/)[0].trim(), title: fire.replace(/^[^.]*\.\s*/, ''), agency: true, holds: ['Fire permit', 'ESS review', 'Acceptance test'], last: '—' },
+      { id: 'util', group: 'Utility', role: 'Interconnection', name: `${s.utility} interconnection`, title: IA.name || '', agency: true, portal: IA.url, portalName: IA.short || '', holds: ['Application review', 'Permission to operate'], last: '—' },
+      { id: 'eng', group: 'EQORE', role: 'Project engineer', name: eng.name, title: eng.title, org: 'EQORE', email: eng.email, team: s.eng, holds: ['Site evaluation', 'Design & engineering'], last: 'Address lookup review, Nov 7' },
+      { id: 'sales', group: 'EQORE', role: 'Account executive', name: sales.name, title: sales.title, org: 'EQORE', email: sales.email, team: s.sales, holds: ['Customer outreach', 'Commercial terms'], last: '—' },
+    ];
+  }
   return [
     { id: 'fm', group: 'Customer', role: 'Facility contact', name: 'Not yet identified', title: 'Add when known', org: s.tenant, editable: true, holds: ['Bills and interval data', 'Electrical room access', 'Existing drawings'], last: '—', mobile: true },
     { id: 'bo', group: 'AHJ', role: 'Building & electrical', name: 'SF Department of Building Inspection', title: 'Permits, plan review, inspections', agency: true, portal: 'https://sf.gov/departments/department-building-inspection', portalName: 'SF DBI', holds: ['Building and electrical permits', 'Final inspection'], last: '—' },
@@ -368,24 +432,235 @@ EQ.buildContacts = function (s) {
   ];
 };
 
-EQ.buildActivity = (s) => [
+EQ.buildActivity = (s) => (!s.sf ? [
+  { t: `${EQ.ASOF}T10:00:00`, who: 'eqore_site', text: `Site record built from the address: ${((EQ.ADDR[s.slug] || {}).record || { sources: [] }).sources.length} public sources` },
+  { t: `${EQ.ASOF}T08:30:00`, who: EQ.TEAM[s.sales].name, text: 'Added from the EQORE facility list' },
+] : [
   { t: `${EQ.ASOF}T10:00:00`, who: EQ.TEAM[s.eng].name, text: 'Public-records review: permits, benchmarking and findings recorded' },
   { t: `${EQ.ASOF}T09:00:00`, who: 'DataSF', text: `Pulled ${(EQ.REC[s.apn] || { permits: [] }).permits.length} permits and ${(EQ.REC[s.apn] || { benchmark: [] }).benchmark.length} years of benchmarking for APN ${s.apn}` },
   { t: `${EQ.ASOF}T08:30:00`, who: EQ.TEAM[s.sales].name, text: 'Lead identified from SF energy benchmarking screen' },
-];
+]);
+
+// Findings and the utility snapshot tile from the utility record. Appended, so reviewed-finding indexes stay stable.
+EQ.applyUtilityRecord = function (s) {
+  const r = EQ.utilityRecord(s); if (!r) return;
+  const h = r.hosting_capacity, src = EQ.UTIL_SRC, name = EQ.utilFmt(r.feeder.name) || EQ.utilFmt(r.feeder.id), add = (sev, text) => s.findings.push({ sev, area: 'utility', text, src });
+  const sum = EQ.utilitySummary(r);
+  if (sum) s.areas.utility = ['partial', sum, src];
+  if (r.match && r.match.confidence === 'low') {
+    const c = r.match.candidates;
+    add('info', `Feeder is a proximity match only: ${c.length} feeders within ${r.match.radius_m} m; nearest is ${name} at ${c[0].distance_m} m. Confirm with ${s.utility}.`);
+  }
+  ['generation', 'load'].forEach((k) => { if (h[k] && h[k].value === 0) add('risk', `${s.utility} hosting capacity shows 0 ${h[k].unit || 'kW'} ${k} capacity on the nearest section (${h[k].data_date}). Upgrades or conditions may apply; confirm with a pre-application inquiry.`); });
+  if (!h.generation && !h.load && sum) add('info', `${s.utility} publishes no hosting capacity near this site for ${name}. Missing is not zero.`);
+  const m = h.computed && String(h.computed.value).match(/([A-Za-z]{3})\w* (\d{4})/);
+  if (m) {
+    const d = new Date(`${m[1]} 1, ${m[2]}`), months = (Date.now() - d) / 2.63e9;
+    if (months > 12) add('info', `${s.utility} hosting-capacity values are from ${h.computed.value}, ${Math.round(months)} months old; check the portal for a newer release.`);
+  }
+  (r.errors || []).forEach((e) => add('info', `Utility lookup error: ${e}`));
+};
+
+/* ---------------------------------------------------------------------------
+   Address-based site records (site_records/, generated by `python -m eqore_site.export`
+   from the address alone: Census, parcels, zoning, hazards, fire authority, utility territory).
+   --------------------------------------------------------------------------- */
+EQ.ADDR = window.EQORE_SITE_RECORDS || {};
+EQ.ADDR_INDEX = (window.EQORE_SITE_INDEX || {}).sites || [];
+EQ.addrSlug = (a) => a.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+EQ.addrDoc = (s) => EQ.ADDR[s.slug] || null;
+EQ.addrField = (s, id) => { const d = EQ.addrDoc(s); return d ? d.record.fields.find((f) => f.id === id) || null : null; };
+EQ.addrHas = (f) => f && f.status !== 'needed' && f.display && f.display !== 'Not available' && f.display !== 'Not retrieved';
+EQ.addrSrc = (id) => `Address lookup (${id})`;
+EQ.STAGE_FROM_LIST = { '03': 'design', '04': 'interconnection', '05': 'install', '06': 'operate' };
+const titleCase = (x) => x.toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase());
+
+// A project from the EQORE facility list: only the address and the customer's facility-list values go in;
+// everything else comes from the address-based record.
+EQ.facilitySeed = function (entry) {
+  const doc = EQ.ADDR[entry.slug]; if (!doc) return null;
+  const fac = doc.facility, R = doc.record, F = (id) => R.fields.find((f) => f.id === id);
+  const [street, city] = fac.address.split(',').map((x) => x.trim());
+  const cen = (F('a_cen') || {}).display || '', zip = (cen.match(/(\d{5})\s*$/) || [])[1] || '';
+  const cand = R.candidates[0];
+  const yr = F('b_year'), fa = F('b_floor'), occ = F('b_occ');
+  return {
+    id: entry.slug, slug: entry.slug, fromList: true, name: fac.facility, code: EQ.initials(fac.facility), sector: fac.segment,
+    tenant: fac.facility, address: street, zip, neighborhood: (F('a_cnty') || {}).display?.replace(/ \(FIPS.*$/, '') || '',
+    apn: cand ? String(cand.apn.value) : '', apnCandidate: !R.confirmed_apn, occupancy: EQ.addrHas(occ) ? occ.display : null, stories: null,
+    floorArea: EQ.addrHas(fa) ? parseInt(String(fa.display).replace(/[^0-9]/g, ''), 10) || null : null,
+    yearBuilt: EQ.addrHas(yr) ? +String(yr.display).slice(0, 4) || null : null,
+    city: titleCase(city || ''), state: entry.state, region: (entry.state || '').toLowerCase(), countyFips: R.county_fips,
+    county: ((F('a_cnty') || {}).display || '').replace(/ County.*$/, ''), lat: R.location.value.lat, lng: R.location.value.lon,
+    utility: fac.utility, tariff: fac.rate ? `${fac.utility} ${fac.rate}` : null,
+    stage: EQ.STAGE_FROM_LIST[(fac.stage || '').slice(0, 2)] || 'intake',
+    summary: '', areas: {}, findings: [], known: {},
+  };
+};
+
+// Fill data points, overview tiles, findings and summary from the address record (and the facility list).
+EQ.applyAddressRecord = function (s) {
+  const doc = EQ.addrDoc(s); if (!doc) return;
+  const R = doc.record, fac = doc.facility || {}, F = (id) => R.fields.find((f) => f.id === id), has = (id) => EQ.addrHas(F(id));
+  const dp = (k) => s.dps.find((d) => d.key === k);
+  const setDp = (k, value, fid, o = {}) => {
+    const d = dp(k); if (!d || d.value != null || value == null) return;
+    const f = fid ? F(fid) : null;
+    Object.assign(d, { value, src: fid ? EQ.addrSrc(fid) : 'EQORE facility list', srcUrl: f ? f.source_url : null, srcType: o.type || 'public',
+      conf: o.conf || (f && f.confidence === 'high' ? 'high' : 'medium'), requiresSignoff: o.signoff ?? (f ? f.status !== 'filled' : true),
+      reviewNote: o.note || (f && f.status === 'confirm' ? 'Public record; confirm on site or with the customer' : null), severity: null });
+  };
+  // Customer values from the EQORE facility list (entered, not verified).
+  const svc = s.fromLead ? '' : (fac.service || '');
+  const cust = { type: 'customer', conf: 'medium', signoff: true, note: 'From the EQORE facility list; confirm on the bill or switchgear nameplate' };
+  if (svc) {
+    const v = (svc.match(/\d{3}Y?\/\d{3}V/) || [])[0], kva = (svc.match(/[\d,]+\s*kVA/) || [])[0], amps = (svc.match(/[\d,]+\s*A main/) || [])[0];
+    if (v) setDp('voltage', `${v} 3-phase (facility list)`, null, cust);
+    if (amps) setDp('mainBreaker', `${amps} (facility list); trip unit and GFPE not given`, null, cust);
+    if (kva) setDp('transformer', `${kva} service (facility list); impedance and ownership not given`, null, cust);
+  }
+  if (fac.rate && !s.fromLead) setDp('tariff', `${fac.utility} ${fac.rate} (facility list)`, null, cust);
+  if (fac.peak_kw && !s.fromLead) setDp('peakDemand', `${Number(fac.peak_kw).toLocaleString('en-US')} kW (${fac.peak_basis}); peak-shave target ${fac.target_kw} kW`, null, cust);
+  if (fac.system_kw && !s.fromLead) s.system = { kw: fac.system_kw, kwh: fac.system_kwh, status: fac.system_status };
+  // Public values from the address record.
+  if (has('f_der')) setDp('onsiteGen', F('f_der').display, 'f_der');
+  if (has('d_code')) setDp('codes', F('d_code').display, 'd_code', { signoff: false });
+  if (has('d_ic')) setDp('interconnect', `Not filed · ${F('d_ic').display}`, 'd_ic');
+  if (has('b_permits')) setDp('permits', F('b_permits').display, 'b_permits');
+  if (has('f_feeder') && !EQ.utilityRecord(s)) setDp('feeder', F('f_feeder').display, 'f_feeder', { conf: 'low' });
+  if (has('g_dist')) setDp('setback', F('g_dist').display, 'g_dist');
+  if (has('g_access')) setDp('fire', F('g_access').display, 'g_access');
+  if (has('f_kwh') && !s.fromList) { /* SF leads already show benchmarking */ }
+  else if (has('f_kwh')) setDp('peakDemand', `Annual use ${F('f_kwh').display}`, 'f_kwh');
+
+  if (s.sf && (!s.occupancy || s.occupancy === '—') && has('b_occ')) s.occupancy = F('b_occ').display.split(';')[0].replace(/^Occupancy\s*/, '');
+  // Region-specific asks and authorities.
+  const fire = has('d_fire') ? F('d_fire').display.split(/[.(]/)[0].replace(/\s+\(FDID.*$/, '').trim() : 'the fire department';
+  s.fireDept = fire; s.ahj = has('z_jur') ? F('z_jur').display.split(',')[0] : s.ahj;
+  s.dps.forEach((d) => { d.ask = d.ask.replace(/PG&E/g, s.utility).replace(/SFFD/g, fire); });
+
+  // Overview tiles for facility-list projects (SF leads keep their reviewed tiles).
+  if (s.fromList || s.fromLead) {
+    const hz = [has('e_liq') && /Inside/.test(F('e_liq').display) && 'liquefaction zone', has('e_tsu') && /^Inside/.test(F('e_tsu').display) && 'tsunami hazard area',
+      has('e_fhsz') && !/None/.test(F('e_fhsz').display) && `fire hazard: ${F('e_fhsz').display}`].filter(Boolean);
+    const seis = has('e_seis') ? F('e_seis').display.split('·').pop().trim() : null;
+    const tiles = {
+      electrical: svc ? ['partial', `${svc} (facility list); no drawings yet`, 'EQORE facility list'] : ['unknown', 'Service size not known', EQ.addrSrc('f_svc')],
+      load: fac.peak_kw ? ['partial', `Peak ${Number(fac.peak_kw).toLocaleString('en-US')} kW (${fac.peak_basis}) · ${fac.utility} ${fac.rate || ''}`, 'EQORE facility list'] : ['unknown', 'No bills or interval data yet', 'EQORE facility list'],
+      site: [hz.length ? 'risk' : 'partial', [hz.length ? hz.join(', ') : 'No mapped liquefaction, tsunami or fire hazard', seis, 'flood zone not checked'].filter(Boolean).join(' · '), EQ.addrSrc(hz.length ? 'e_liq' : 'e_seis')],
+      permits: [has('z_zone') ? 'partial' : 'unknown', [has('z_zone') ? `Zoning ${F('z_zone').display.split(',')[0]}` : 'Zoning not found', has('d_code') ? F('d_code').display.split(',')[0] : null].filter(Boolean).join(' · '), EQ.addrSrc(has('z_zone') ? 'z_zone' : 'z_jur')],
+      utility: [has('f_util') ? 'partial' : 'unknown', has('f_util') ? `${F('f_util').display}${has('d_ic') ? ' · ' + F('d_ic').display : ''}` : 'Utility not confirmed', EQ.addrSrc('f_util')],
+    };
+    s.areas = s.fromLead ? Object.assign({}, s.areas, { site: tiles.site, permits: tiles.permits, utility: s.areas.utility && s.areas.utility[0] !== 'unknown' ? s.areas.utility : tiles.utility }) : tiles;
+    if (s.fromLead) return addFlags();
+    const sys = fac.system_kw ? `${fac.system_kw} kW / ${fac.system_kwh} kWh ${fac.system_status} system` : 'System not sized';
+    s.summary = `${fac.segment} on ${fac.utility} ${fac.rate || ''}: ${sys} against a ${Number(fac.peak_kw || 0).toLocaleString('en-US')} kW peak${hz.length ? `; site is in a ${hz.join(' and ')}` : ''}. Parcel is not yet confirmed.`;
+  }
+  addFlags();
+  function addFlags() {
+  // Findings from the record's flags (appended; reviewed indexes stay stable).
+  const AREA = (ids) => { const i = (ids || [])[0] || ''; return /^e_|^g_|^b_/.test(i) ? 'site' : /^z_|^d_/.test(i) ? 'permits' : /^f_(util|feeder)|^d_ic/.test(i) ? 'utility' : /^f_/.test(i) ? 'electrical' : 'site'; };
+  const seen = new Set(s.findings.map((f) => f.text));
+  R.flags.forEach((x) => {
+    const ids = x.field_ids || [], text = `${x.title}. ${x.detail}`;
+    if (seen.has(text)) return;
+    const hazard = ids.some((i) => /^e_(liq|tsu|fhsz|fault|coast)$/.test(i));
+    s.findings.push({ sev: x.severity === 'warn' && (hazard || /straddles|disagree/i.test(x.title)) ? 'risk' : 'info', area: AREA(ids), text, src: ids.length ? EQ.addrSrc(ids[0]) : 'Address lookup' });
+  });
+  }
+};
+
+/* ---------------------------------------------------------------------------
+   Leads from the lead form (lead/): read from localStorage 'eqore.leads'.
+   Each becomes a project at intake step 01; uploads move it to step 03 automatically.
+   --------------------------------------------------------------------------- */
+EQ.LEADS_KEY = 'eqore.leads';
+EQ.readLeads = () => { try { return JSON.parse(localStorage.getItem(EQ.LEADS_KEY) || '[]'); } catch (e) { return []; } };
+EQ.leadSite = function (lead) {
+  const g = lead.geo || {}, st = lead.state || g.state || '';
+  const street = (g.matched || lead.address).split(',')[0];
+  const s = {
+    id: lead.id, fromLead: true, lead, slug: lead.record ? lead.record.slug : EQ.addrSlug(lead.address), name: lead.facility, code: EQ.initials(lead.facility || 'Lead'),
+    sector: lead.type || 'Commercial / industrial', tenant: lead.facility, address: street.replace(/\b([A-Z])([A-Z]+)\b/g, (m, a, b) => a + b.toLowerCase()), zip: g.zip || '',
+    neighborhood: g.county ? `${g.county} County` : '', apn: '', apnCandidate: true, occupancy: null, stories: null, floorArea: lead.sqft || null, yearBuilt: null,
+    city: g.city || '', state: st, region: st.toLowerCase(), countyFips: g.countyFips || '', county: g.county || '', lat: g.lat ?? null, lng: g.lng ?? null,
+    utility: lead.utility, tariff: lead.rate ? `${lead.utility} ${lead.rate}` : null, stage: 'intake', intake: 0,
+    summary: '', areas: {}, findings: [], known: {},
+  };
+  return s;
+};
+// Fill a lead project from what the customer gave on the form.
+EQ.applyLead = function (s) {
+  const lead = s.lead; if (!lead) return;
+  const dp = (k) => s.dps.find((d) => d.key === k), fmtN = (n, x = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: x });
+  const set = (k, value, o = {}) => { const d = dp(k); if (!d || value == null) return; Object.assign(d, { value, src: o.src || 'Lead form', srcUrl: o.url || null, srcType: o.type || 'customer', conf: o.conf || 'medium', requiresSignoff: o.signoff ?? true, reviewNote: o.note || 'Entered by the customer on the lead form; confirm on the bill', severity: null }); };
+  const day = lead.createdAt.slice(0, 10);
+  if (lead.rate) set('tariff', `${lead.utility} ${lead.rate} · about $${fmtN(lead.bill)}/month`);
+  if (lead.interval) {
+    const iv = lead.interval; s.interval = iv;
+    set('interval', `${fmtN(iv.count)} intervals, ${iv.minutes}-min, ${iv.start} – ${iv.end}`, { src: 'Customer interval file', conf: 'high', signoff: false, note: null });
+    set('peakDemand', `${fmtN(iv.peakKw, 1)} kW · ${iv.peakAt} · load factor ${fmtN(iv.loadFactor * 100)}%`, { src: 'Customer interval file', conf: 'high', signoff: false, note: null });
+  } else if (lead.peakEntered) set('peakDemand', `${fmtN(lead.peakEntered)} kW (customer, from bill)`);
+  if (lead.der && lead.der.length) set('onsiteGen', lead.der.join(', ') + ' (customer)');
+  if (lead.feeder) {
+    const f = lead.feeder;
+    set('feeder', `${f.name} · ${f.cap}${f.date ? ` · data ${f.date}` : ''}`, { src: `${f.utility} hosting-capacity map (lead form check)`, url: f.url, type: 'utility', conf: 'low', note: 'Nearest line within 150 m; screening only' });
+  }
+  // Files the customer attached (names and photo thumbnails; bills still need values read from them).
+  const kindDp = { bill: 'tariff', interval: 'interval', photo: 'voltage' };
+  (lead.files || []).forEach((f, i) => {
+    s.files.unshift({ id: `${s.id}:lead:${i}`, key: `lead-${i}`, name: f.name, type: /^image\//.test(f.type) ? 'img' : /csv/.test(f.type) || /\.csv$/i.test(f.name) ? 'csv' : 'pdf', cat: 'Customer upload', uploader: { name: lead.contact.name || 'Customer', role: 'Lead form' }, date: day, origin: 'Customer-provided', conf: 'high', confLabel: 'Customer document', size: `${fmtN(f.size / 1024)} KB`, preview: 'upload', thumb: f.thumb || null, dps: [kindDp[f.kind]].filter(Boolean) });
+  });
+  // Contact.
+  const c = lead.contact || {};
+  s.fm = { name: c.name, title: c.role, phone: c.phone, email: c.email };
+  const fm = s.contacts.find((x) => x.id === 'fm');
+  if (fm) Object.assign(fm, { name: c.name || fm.name, title: [c.role, c.email, c.phone].filter(Boolean).join(' · '), email: c.email, phone: c.phone, last: `Lead form, ${day}` });
+  // Overview tiles (records-based tiles are added by applyAddressRecord when an address record exists).
+  const e = lead.estimate;
+  s.areas = {
+    electrical: (lead.files || []).some((f) => f.kind === 'photo') ? ['partial', 'Customer photos received; read ratings from them', 'Lead form'] : ['unknown', 'No service details yet', 'Lead form'],
+    load: lead.interval ? ['partial', `Interval data received (${lead.interval.minutes}-min)`, 'Customer interval file'] : ['partial', `About $${fmtN(lead.bill)}/month${lead.peakEntered ? ` · peak ${fmtN(lead.peakEntered)} kW` : ''}${lead.rate ? ' · ' + lead.utility + ' ' + lead.rate : ''}`, 'Lead form'],
+    site: ['unknown', lead.tenure ? `${lead.tenure} building${lead.tenure === 'Leased' ? '; landlord consent needed' : ''}` : 'Not reviewed', 'Lead form'],
+    permits: ['unknown', 'Not reviewed', 'Lead form'],
+    utility: lead.feeder ? ['partial', `${lead.feeder.name}`, `${lead.feeder.utility} hosting-capacity map (lead form check)`] : ['unknown', `${lead.utility}; feeder not checked`, 'Lead form'],
+  };
+  s.summary = `Lead form ${day}: ${lead.type || 'C&I facility'} on ${lead.utility}${lead.rate ? ' ' + lead.rate : ''}, about $${fmtN(lead.bill)}/month.${e ? ` Rough range $${fmtN(Math.round(e.lo / 1000) * 1000)}–$${fmtN(Math.round(e.hi / 1000) * 1000)}/yr with ${fmtN(e.sysKw)} kW / ${fmtN(e.sysKwh)} kWh (peak ${fmtN(e.peak)} kW ${e.basis}).` : ''}${lead.notes ? ` Customer note: “${lead.notes}”` : ''}`;
+  s.peakText = lead.interval ? `${fmtN(lead.interval.peakKw)} kW (interval)` : lead.peakEntered ? `${fmtN(lead.peakEntered)} kW (bill)` : e ? `~${fmtN(e.peak)} kW (estimated)` : null;
+  if (lead.tenure === 'Leased') s.findings.push({ sev: 'info', area: 'site', text: 'Leased building: the landlord must consent to the installation and sign permit applications.', src: 'Lead form' });
+  if (!lead.geo) s.findings.push({ sev: 'risk', area: 'site', text: 'The address did not match in the Census geocoder; confirm the location with the customer.', src: 'Lead form' });
+  s.activity.unshift({ t: lead.createdAt, who: c.name || 'Customer', text: `Lead form submitted${(lead.files || []).length ? ` with ${(lead.files || []).length} file(s)` : ''}` });
+};
+EQ.buildLeadSites = function (existingIds) {
+  return EQ.readLeads().filter((l) => !(existingIds || new Set()).has(l.id) && l.geo && l.geo.lat != null).map((lead) => {
+    const s = EQ.leadSite(lead);
+    Object.assign(s, { account: null, sales: 'jkim', eng: 'evasquez', fm: { name: 'Facility contact', title: '', phone: '', email: '' }, inputs: {}, reviewed: {}, overrides: {}, interval: null });
+    s.dps = EQ.buildDataPoints(s); s.files = EQ.buildFiles(s); s.docs = EQ.buildDocs(s); s.contacts = EQ.buildContacts(s);
+    s.activity = [{ t: lead.createdAt, who: 'Lead form', text: 'Project created from the lead form' }];
+    EQ.applyLead(s); EQ.applyAddressRecord(s); EQ.applyUtilityRecord(s);
+    return s;
+  });
+};
 
 EQ.buildSites = function () {
-  return EQ.SEED_SITES.map((seed) => {
+  const seeds = EQ.SEED_SITES.map((seed) => {
     const s = JSON.parse(JSON.stringify(seed));
     const r = EQ.REC[s.apn] || {};
-    Object.assign(s, { city: 'San Francisco', state: 'CA', county: 'San Francisco', countyFips: '06075', region: 'ca', lat: r.lat, lng: r.lng, floorArea: r.floorArea, yearBuilt: r.yearBuilt,
-      utility: 'PG&E', tariff: null, account: null, ahj: 'SF Department of Building Inspection', fireDept: 'San Francisco Fire Department',
-      stage: 'assessment', sales: 'jkim', eng: 'evasquez', fm: { name: 'Facility contact', title: '', phone: '', email: '' }, inputs: {}, reviewed: {}, overrides: {}, interval: null });
+    Object.assign(s, { sf: true, slug: EQ.addrSlug(`${seed.address}, San Francisco, CA ${seed.zip}`), city: 'San Francisco', state: 'CA', county: 'San Francisco', countyFips: '06075', region: 'ca', lat: r.lat, lng: r.lng, floorArea: r.floorArea, yearBuilt: r.yearBuilt,
+      utility: 'PG&E', tariff: null, ahj: 'SF Department of Building Inspection', fireDept: 'San Francisco Fire Department', stage: 'intake' });
+    return s;
+  });
+  const used = new Set(seeds.map((s) => s.slug));
+  const listed = EQ.ADDR_INDEX.filter((e) => !used.has(e.slug) && EQ.ADDR[e.slug] && EQ.ADDR[e.slug].facility.facility).map(EQ.facilitySeed).filter(Boolean);
+  return seeds.concat(listed).map((s) => {
+    Object.assign(s, { account: null, sales: 'jkim', eng: 'evasquez', fm: { name: 'Facility contact', title: '', phone: '', email: '' }, inputs: {}, reviewed: {}, overrides: {}, interval: null });
     s.dps = EQ.buildDataPoints(s);
     s.files = EQ.buildFiles(s);
     s.docs = EQ.buildDocs(s);
     s.contacts = EQ.buildContacts(s);
     s.activity = EQ.buildActivity(s);
+    EQ.applyAddressRecord(s);
+    EQ.applyUtilityRecord(s);
     return s;
   });
 };

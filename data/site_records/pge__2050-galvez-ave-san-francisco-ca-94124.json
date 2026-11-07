@@ -1,0 +1,323 @@
+{
+  "schema": "eqore.site_record/v1",
+  "generated_at": "2026-11-07T21:11:26+00:00",
+  "input": {
+    "address": "2050 Galvez Ave, San Francisco, CA 94124",
+    "utility": "pge"
+  },
+  "site": {
+    "address": {
+      "value": "2050 GALVEZ AVE, SAN FRANCISCO, CA, 94124",
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=2050+Galvez+Ave%2C+San+Francisco%2C+CA+94124&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    },
+    "lat": {
+      "value": 37.745523183059,
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=2050+Galvez+Ave%2C+San+Francisco%2C+CA+94124&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    },
+    "lon": {
+      "value": -122.396125696918,
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=2050+Galvez+Ave%2C+San+Francisco%2C+CA+94124&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    }
+  },
+  "utility": {
+    "value": "Pacific Gas and Electric (PG&E)",
+    "source": {
+      "name": "Customer bill (input)",
+      "url": "input:--utility"
+    },
+    "retrieved": "2026-11-07",
+    "confidence": "high",
+    "note": "Utility is an input from the bill; never inferred."
+  },
+  "feeder": {
+    "id": {
+      "value": "022331108",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "name": {
+      "value": "SF P (HUNTERS POINT) 1108",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "substation": {
+      "value": "SF P (HUNTERS POINT)",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "note": "Derived from the feeder name (PG&E names feeders '<substation> <circuit>'); not a separate field."
+    },
+    "division": {
+      "value": "San Francisco",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    }
+  },
+  "feeder_voltage_kv": {
+    "value": 12,
+    "source": {
+      "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+      "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+    },
+    "retrieved": "2026-11-07",
+    "confidence": "low",
+    "unit": "kV"
+  },
+  "phases": {
+    "value": 3,
+    "source": {
+      "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+      "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+    },
+    "retrieved": "2026-11-07",
+    "confidence": "low"
+  },
+  "hosting_capacity": {
+    "generation": {
+      "value": 1230,
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "kW",
+      "data_date": "Apr 2025",
+      "note": "Nearest dated line section (OBJECTID 956729, 3 m from the site). Values vary along this feeder: 10 dated sections nearby range GenCapacity_kW 20\u20131230 kW; LoadCapacity_kW 1972\u20133639 kW."
+    },
+    "load": {
+      "value": 3631,
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "kW",
+      "data_date": "Apr 2025",
+      "note": "Nearest dated line section (OBJECTID 956729, 3 m from the site). Values vary along this feeder: 10 dated sections nearby range GenCapacity_kW 20\u20131230 kW; LoadCapacity_kW 1972\u20133639 kW."
+    },
+    "computed": {
+      "value": "Apr 2025",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "note": "PG&E ICA_Analysis_Date"
+    },
+    "limiting_criteria": {
+      "value": "Thermal",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "data_date": "Apr 2025"
+    }
+  },
+  "match": {
+    "method": "4 feeders have line sections within 150 m; the nearest (3 m) is reported (low confidence; see candidates).",
+    "radius_m": 150,
+    "sections": 51,
+    "candidates": [
+      {
+        "feeder": "022331108",
+        "distance_m": 2.5,
+        "sections": 10
+      },
+      {
+        "feeder": "022331101",
+        "distance_m": 3.8,
+        "sections": 29
+      },
+      {
+        "feeder": "022331107",
+        "distance_m": 17.0,
+        "sections": 10
+      },
+      {
+        "feeder": "022490401",
+        "distance_m": 104.1,
+        "sections": 2
+      }
+    ],
+    "confidence": "low"
+  },
+  "extra": {
+    "GenCapacity_no_OpFlex_kW": {
+      "value": 10450,
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=OBJECTID%3D956729&outFields=FeederId%2CGenCapacity_no_OpFlex_kW%2CGenericPVCapacity_kW%2Climiting_month_hour%2CScreenL%2CPublish&returnGeometry=false&f=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "kW",
+      "data_date": "Apr 2025"
+    },
+    "GenericPVCapacity_kW": {
+      "value": 1610,
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=OBJECTID%3D956729&outFields=FeederId%2CGenCapacity_no_OpFlex_kW%2CGenericPVCapacity_kW%2Climiting_month_hour%2CScreenL%2CPublish&returnGeometry=false&f=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low",
+      "unit": "kW",
+      "data_date": "Apr 2025"
+    },
+    "limiting_month_hour": {
+      "value": "1_19",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=OBJECTID%3D956729&outFields=FeederId%2CGenCapacity_no_OpFlex_kW%2CGenericPVCapacity_kW%2Climiting_month_hour%2CScreenL%2CPublish&returnGeometry=false&f=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "ScreenL": {
+      "value": "Likely to pass",
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=OBJECTID%3D956729&outFields=FeederId%2CGenCapacity_no_OpFlex_kW%2CGenericPVCapacity_kW%2Climiting_month_hour%2CScreenL%2CPublish&returnGeometry=false&f=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "Publish": {
+      "value": 1,
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd)",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=OBJECTID%3D956729&outFields=FeederId%2CGenCapacity_no_OpFlex_kW%2CGenericPVCapacity_kW%2Climiting_month_hour%2CScreenL%2CPublish&returnGeometry=false&f=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "low"
+    },
+    "ica_not_available_sections_nearby": {
+      "value": 0,
+      "source": {
+        "name": "PG&E Grid Resource Integration Portal (DRPComplianceRelProd) \u2014 ICA Not Available layer",
+        "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/4/query?where=feeder_id%3D%27022331108%27&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=feeder_id%2Clast_update_on_map&returnGeometry=false&f=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high",
+      "note": "Line sections of this feeder within 150 m that PG&E lists as ICA not available."
+    }
+  },
+  "gaps": [],
+  "site_gaps": [
+    {
+      "field": "service_voltage_and_configuration",
+      "why": "Sets the battery inverter voltage and the transformer, if any, between battery and switchgear.",
+      "how_to_collect": "Customer photo of the nameplate label on the main switchboard or panel (voltage, e.g. 480Y/277V, and phase/wire).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "main_service_amps_and_main_breaker",
+      "why": "The main breaker and service size limit how much battery power can connect without a service upgrade.",
+      "how_to_collect": "Customer photo of the main breaker handle and its rating label (e.g. 2000 A), plus the switchboard nameplate.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "bus_rating_and_configuration",
+      "why": "The bus rating decides whether a load-side connection passes the NEC 705.12 120% rule.",
+      "how_to_collect": "Customer photo of the switchboard or panel nameplate showing the bus rating.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "single_line_diagram",
+      "why": "The SLD shows the service, existing generation and where the battery can tie in.",
+      "how_to_collect": "Ask the customer for any existing single-line diagram (often framed in the electrical room or in past permit sets).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "transformer_kva_ratio_impedance_age",
+      "why": "Transformer size and impedance set available fault current and can limit export and charging.",
+      "how_to_collect": "Request transformer kVA, voltage ratio and impedance from the utility (pre-application or service request).",
+      "who": "utility"
+    },
+    {
+      "field": "available_fault_current",
+      "why": "Equipment must be rated for the available fault current at the point of connection.",
+      "how_to_collect": "Request an available-fault-current letter from the utility for the service address.",
+      "who": "utility"
+    },
+    {
+      "field": "spare_breaker_positions_or_bus_space",
+      "why": "An open breaker position or bus space is the cheapest place to connect the battery.",
+      "how_to_collect": "Customer photo of the main switchboard front showing breaker positions and any blank spaces (doors closed is fine).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "service_point_and_meter_location",
+      "why": "The meter and service point locate the interconnection and the equipment pad.",
+      "how_to_collect": "Customer photo of the utility meter(s) and a marked-up site photo or map showing where they are.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    }
+  ],
+  "notes": [],
+  "errors": [],
+  "queries": [
+    {
+      "name": "US Census geocoder",
+      "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=2050+Galvez+Ave%2C+San+Francisco%2C+CA+94124&benchmark=Public_AR_Current&format=json"
+    },
+    {
+      "name": "PG&E LineDetail (layer 3) within 150 m",
+      "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=1%3D1&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=OBJECTID%2CFeederId%2CFeederName%2Cvoltage_kv%2Cphase_cnt%2CLoadCapacity_kW%2CGenCapacity_kW%2Climiting_criteria%2CICA_Analysis_Date%2CDivision&returnGeometry=true&f=json&outSR=4326"
+    },
+    {
+      "name": "PG&E LineDetail extra fields (same section)",
+      "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/3/query?where=OBJECTID%3D956729&outFields=FeederId%2CGenCapacity_no_OpFlex_kW%2CGenericPVCapacity_kW%2Climiting_month_hour%2CScreenL%2CPublish&returnGeometry=false&f=json"
+    },
+    {
+      "name": "PG&E ICA Not Available (layer 4), this feeder within 150 m",
+      "url": "https://services2.arcgis.com/mJaJSax0KPHoCNB6/ArcGIS/rest/services/DRPComplianceRelProd/FeatureServer/4/query?where=feeder_id%3D%27022331108%27&geometry=-122.396125696918%2C37.745523183059&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&distance=150&units=esriSRUnit_Meter&outFields=feeder_id%2Clast_update_on_map&returnGeometry=false&f=json"
+    }
+  ],
+  "cautions": [
+    "Hosting capacity values are utility screening estimates, not an approval or a cost estimate, and they change over time.",
+    "A value of 0 can mean the feeder is already constrained, there is an upstream limit, or it was not analyzed. It does not mean the project cannot happen: the utility may require upgrades or conditions; confirm with a pre-application inquiry.",
+    "A battery both charges (acts like load) and discharges (acts like generation); both capacities matter."
+  ],
+  "site_id": "galvez-2050"
+}

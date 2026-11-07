@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EQORE · Free savings assessment</title>
+  <meta name="description" content="See what your facility could save with behind-the-meter battery storage. Enter your address and bill for a rough annual savings range." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'] },
+          colors: {
+            ink: '#06162b', ink2: '#4a515d', mute: '#7d828b', brown: '#51453f',
+            steel: '#446c87', steelsoft: '#e8eef3', blue: '#3c6390', bluesoft: '#b3c8e4',
+            sand: '#efebe4', paper: '#f8f6f4', line: '#d3cecd', line2: '#e8e4e1',
+            ochre: '#8f5f17', ochresoft: '#f7efe0', alert: '#ac312c', alertsoft: '#f8e9e7',
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="../assets/styles.css" />
+  <style>
+    .lf-label { display: block; font-size: 12.5px; color: var(--ink2); margin-bottom: 6px; }
+    .lf-label .req { color: var(--alert); margin-left: 2px; }
+    .lf-help { font-size: 11.5px; color: var(--mute); margin-top: 5px; }
+    .lf-input { width: 100%; height: 42px; padding: 0 12px; font-size: 14px; }
+    textarea.lf-input { height: auto; padding: 10px 12px; }
+    .lf-step { display: grid; grid-template-columns: 44px 1fr; gap: 0 18px; }
+    .lf-step .k { font-size: 12.5px; color: var(--mute); padding-top: 4px; font-variant-numeric: tabular-nums; border-top: 5px solid var(--line); }
+    .lf-step.done .k { border-color: var(--steel); color: var(--steel); }
+    .lf-step.cur .k { border-color: var(--ink); color: var(--ink); }
+    .drop { display: flex; align-items: center; gap: 12px; border: 1px dashed var(--line); background: #fff; padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+    .drop:hover, .drop.over { border-color: var(--ink); }
+    .chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: #fff; padding: 4px 8px; font-size: 12px; }
+    .choice { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: #fff; padding: 9px 12px; font-size: 13px; cursor: pointer; }
+    .choice:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+    .est-big { font-size: 34px; font-weight: 300; letter-spacing: -0.02em; line-height: 1.1; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body class="bg-paper text-ink font-sans antialiased">
+  <header class="bg-white border-b border-line">
+    <div class="max-w-[1240px] mx-auto px-4 lg:px-8 h-16 flex items-center gap-6">
+      <a href="./" class="flex items-baseline gap-3" aria-label="EQORE savings assessment"><span class="wordmark">EQORE</span><span class="hidden sm:inline eyebrow">Savings assessment</span></a>
+      <div class="flex-1"></div>
+      <a href="tel:+18575242670" class="hidden sm:inline text-[13px] text-ink2 hover:text-ink num">(857) 524-2670</a>
+      <a href="mailto:info@eqore.com" class="hidden md:inline text-[13px] text-ink2 hover:text-ink">info@eqore.com</a>
+    </div>
+  </header>
+
+  <main id="lead-form-view" class="max-w-[1240px] mx-auto px-4 lg:px-8 py-10">
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+      <div class="lg:col-span-7">
+        <div class="eyebrow">Free savings assessment</div>
+        <h1 class="display text-[40px] sm:text-[48px] leading-[1.05] mt-3">See what your facility could save</h1>
+        <p class="text-[15px] text-ink2 mt-4 max-w-xl">Takes a few minutes. You'll see a rough annual savings range as you go. Add your bill and interval data now and we can model system options, projected savings and payback without waiting on a second round of emails.</p>
+      </div>
+      <p class="lg:col-span-5 text-[13px] text-ink2 lg:text-right">Behind-the-meter battery storage for commercial and industrial facilities. If you spend more than $10K a month on electricity, it's worth a call.</p>
+    </section>
+
+    <form id="lead-form" class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-10 items-start" novalidate>
+      <div class="lg:col-span-7 space-y-10">
+
+        <!-- 01 Facility -->
+        <section class="lf-step cur" data-step="1">
+          <div class="k">01</div>
+          <div class="panel p-6 space-y-5">
+            <div><h2 class="h-section">Facility</h2><p class="text-[13px] text-ink2 mt-1">Where the battery would go and how you buy power.</p></div>
+            <div>
+              <label class="lf-label" for="f-address">Facility address<span class="req">*</span></label>
+              <div class="flex gap-2"><input id="f-address" name="address" class="field lf-input" autocomplete="street-address" placeholder="Street, city, state" required />
+                <button type="button" class="btn btn-secondary h-[42px] shrink-0" data-action="locate">Find</button></div>
+              <div id="geo-status" class="lf-help">We look up the address with the US Census geocoder to check utility, feeder and parcel data.</div>
+            </div>
+            <div id="geo-card" hidden class="grid grid-cols-1 sm:grid-cols-5 gap-4 border border-line">
+              <div id="geo-map" class="sm:col-span-2 h-40 sm:h-auto min-h-[160px]"></div>
+              <dl id="geo-facts" class="sm:col-span-3 p-4 text-[12.5px] grid grid-cols-2 gap-x-4 gap-y-2.5 content-start"></dl>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label class="lf-label" for="f-facility">Facility or company name<span class="req">*</span></label><input id="f-facility" name="facility" class="field lf-input" required autocomplete="organization" /></div>
+              <div><label class="lf-label" for="f-type">Facility type</label>
+                <select id="f-type" name="type" class="field lf-input">
+                  <option value="">Select</option>
+                  <option>Cold storage / refrigerated warehouse</option><option>Food processing</option><option>Manufacturing</option><option>Injection molding / plastics</option>
+                  <option>Metal finishing / heat treating</option><option>Distribution center / warehouse</option><option>Data center / IT</option><option>Other commercial or industrial</option>
+                </select></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div><label class="lf-label" for="f-sqft">Building size (sq ft)</label><input id="f-sqft" name="sqft" class="field lf-input num" inputmode="numeric" placeholder="e.g. 60,000" /></div>
+              <div><label class="lf-label" for="f-hours">Operating hours</label>
+                <select id="f-hours" name="hours" class="field lf-input"><option value="">Select</option><option value="1">One shift</option><option value="2">Two shifts</option><option value="3">24/7</option></select></div>
+              <div><label class="lf-label" for="f-tenure">Building</label>
+                <select id="f-tenure" name="tenure" class="field lf-input"><option value="">Select</option><option>Owned</option><option>Leased</option></select></div>
+            </div>
+            <fieldset><legend class="lf-label">Already on site</legend>
+              <div class="flex flex-wrap gap-2">
+                <label class="choice"><input type="checkbox" name="der" value="Solar PV" class="accent-[#06162b]" />Solar PV</label>
+                <label class="choice"><input type="checkbox" name="der" value="Battery storage" class="accent-[#06162b]" />Battery storage</label>
+                <label class="choice"><input type="checkbox" name="der" value="Backup generator" class="accent-[#06162b]" />Backup generator</label>
+                <label class="choice"><input type="checkbox" name="der" value="EV charging" class="accent-[#06162b]" />EV charging</label>
+              </div></fieldset>
+          </div>
+        </section>
+
+        <!-- 02 Utility & bill -->
+        <section class="lf-step" data-step="2">
+          <div class="k">02</div>
+          <div class="panel p-6 space-y-5">
+            <div><h2 class="h-section">Utility and bill</h2><p class="text-[13px] text-ink2 mt-1">From your electric bill. Demand charges drive most battery savings.</p></div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div><label class="lf-label" for="f-state">State<span class="req">*</span></label><select id="f-state" name="state" class="field lf-input" required></select></div>
+              <div><label class="lf-label" for="f-utility">Electric utility<span class="req">*</span></label><select id="f-utility" name="utility" class="field lf-input" required></select></div>
+              <div><label class="lf-label" for="f-rate">Rate schedule</label><select id="f-rate" name="rate" class="field lf-input"></select></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label class="lf-label" for="f-bill">Monthly electricity bill<span class="req">*</span></label>
+                <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-mute text-[14px]">$</span><input id="f-bill" name="bill" class="field lf-input pl-7 num" inputmode="numeric" placeholder="Typical month" required /></div></div>
+              <div><label class="lf-label" for="f-peak">Peak demand (kW), if you know it</label><input id="f-peak" name="peak" class="field lf-input num" inputmode="numeric" placeholder="“Max demand” on the bill" /></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 03 Data -->
+        <section class="lf-step" data-step="3">
+          <div class="k">03</div>
+          <div class="panel p-6 space-y-5">
+            <div><h2 class="h-section">Bills, load data and photos</h2><p class="text-[13px] text-ink2 mt-1">Optional, but it lets us size the system now instead of following up. Files stay in your browser until you submit.</p></div>
+            <div>
+              <div class="lf-label">Utility bills (last 12 months, all pages)</div>
+              <label class="drop" data-drop="bill"><span class="ficon" aria-hidden="true">PDF</span><span class="text-[13px] text-ink2 flex-1">Drop PDFs or photos of your bills, or <span class="link">browse</span></span><input type="file" class="hidden" data-upload="bill" accept=".pdf,image/*" multiple /></label>
+              <div class="flex flex-wrap gap-2 mt-2" data-list="bill"></div>
+            </div>
+            <div>
+              <div class="lf-label">15-minute interval data (12 months)</div>
+              <label class="drop" data-drop="interval"><span class="ficon" aria-hidden="true">CSV</span><span class="text-[13px] text-ink2 flex-1">Drop your Green Button or utility interval CSV, or <span class="link">browse</span></span><input type="file" class="hidden" data-upload="interval" accept=".csv,text/csv" /></label>
+              <div class="flex flex-wrap gap-2 mt-2" data-list="interval"></div>
+              <details class="mt-2 text-[12px] text-ink2"><summary class="cursor-pointer text-blue">How to get your interval data</summary>
+                <ul class="list-disc pl-5 mt-2 space-y-1">
+                  <li><b class="font-medium">PG&amp;E, SCE, SDG&amp;E:</b> sign in to your business account, open your energy usage, and use Green Button “Download My Data”. Choose 15-minute intervals and the last 12 months as CSV.</li>
+                  <li><b class="font-medium">National Grid, Eversource, Unitil (MA, NH):</b> ask your account representative or use the online account for 15-minute interval data for the last 12 months.</li>
+                  <li>No file handy? Skip it. We'll request it after the call.</li>
+                  <li class="text-mute">Demo: <a class="link" href="sample/sample_interval_15min_DEMO.csv" download>sample 15-minute file</a> (synthetic data, not a customer).</li>
+                </ul></details>
+            </div>
+            <div>
+              <div class="lf-label">Photos: main switchboard nameplate, utility meter, and where equipment could go</div>
+              <label class="drop" data-drop="photo"><span class="ficon" aria-hidden="true">JPG</span><span class="text-[13px] text-ink2 flex-1">Drop phone photos, or <span class="link">browse</span></span><input type="file" class="hidden" data-upload="photo" accept="image/*" multiple /></label>
+              <div class="flex flex-wrap gap-2 mt-2" data-list="photo"></div>
+              <p class="lf-help text-ochre">Photograph only labels you can see from the floor. Don't open equipment, remove covers, or climb to photograph a transformer.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 04 Contact -->
+        <section class="lf-step" data-step="4">
+          <div class="k">04</div>
+          <div class="panel p-6 space-y-5">
+            <div><h2 class="h-section">Contact</h2><p class="text-[13px] text-ink2 mt-1">Who we should follow up with.</p></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label class="lf-label" for="f-name">Name<span class="req">*</span></label><input id="f-name" name="name" class="field lf-input" autocomplete="name" required /></div>
+              <div><label class="lf-label" for="f-role">Role</label>
+                <select id="f-role" name="role" class="field lf-input"><option value="">Select</option><option>Owner / executive</option><option>Facility or plant manager</option><option>Energy or sustainability manager</option><option>Finance</option><option>Other</option></select></div>
+              <div><label class="lf-label" for="f-email">Work email<span class="req">*</span></label><input id="f-email" name="email" type="email" class="field lf-input" autocomplete="email" required /></div>
+              <div><label class="lf-label" for="f-phone">Phone</label><input id="f-phone" name="phone" type="tel" class="field lf-input" autocomplete="tel" /></div>
+            </div>
+            <div><label class="lf-label" for="f-notes">Anything we should know</label><textarea id="f-notes" name="notes" rows="3" class="field lf-input" placeholder="Planned expansions, new equipment, outages, a landlord to involve…"></textarea></div>
+            <input type="text" name="website" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
+            <p class="text-[12px] text-ink2">By submitting, you agree that EQORE may contact you about your facility. Prefer to talk? Call <a class="link" href="tel:+18575242670">(857) 524-2670</a> or email <a class="link" href="mailto:info@eqore.com">info@eqore.com</a>.</p>
+            <div id="form-error" class="text-[13px] text-alert" hidden></div>
+            <button type="submit" class="btn btn-primary h-11 px-5 text-[14px] w-full sm:w-auto justify-between gap-6">Request the full assessment<span>→</span></button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Live estimate -->
+      <aside class="lg:col-span-5 lg:sticky lg:top-6 space-y-4">
+        <div class="panel">
+          <div class="panel-head"><div class="eyebrow flex-1">Rough annual savings</div><span id="est-basis" class="text-[11.5px] text-mute"></span></div>
+          <div class="p-6" id="estimate"></div>
+        </div>
+        <p class="text-[11.5px] text-mute px-1">A screening range from public tariffs and typical peak-shaving results, not a quote. The full assessment models your interval data, tariff and program rules.</p>
+      </aside>
+    </form>
+  </main>
+
+  <main id="lead-done-view" class="max-w-[960px] mx-auto px-4 lg:px-8 py-12" hidden></main>
+
+  <footer class="border-t border-line mt-10">
+    <div class="max-w-[1240px] mx-auto px-4 lg:px-8 py-6 text-[11.5px] text-mute flex flex-wrap gap-x-6 gap-y-1">
+      <span>EQORE · 444 Somerville Ave, Somerville, MA 02143</span>
+      <span>Demo build: submissions are saved in this browser only and appear in EQORE Site Records.</span>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../assets/reference.js"></script>
+  <script src="../assets/interval.js"></script>
+  <script src="lead.js"></script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+{
+  "schema": "eqore.site_record/v1",
+  "generated_at": "2026-11-07T22:10:38+00:00",
+  "input": {
+    "address": "16 Commerce Way, Woburn, MA",
+    "utility": "eversource_ma"
+  },
+  "site": {
+    "address": {
+      "value": "16 COMMERCE WAY, WOBURN, MA, 01801",
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=16+Commerce+Way%2C+Woburn%2C+MA&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    },
+    "lat": {
+      "value": 42.508002145087,
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=16+Commerce+Way%2C+Woburn%2C+MA&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    },
+    "lon": {
+      "value": -71.131738901976,
+      "source": {
+        "name": "US Census Geocoder (Public_AR_Current)",
+        "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=16+Commerce+Way%2C+Woburn%2C+MA&benchmark=Public_AR_Current&format=json"
+      },
+      "retrieved": "2026-11-07",
+      "confidence": "high"
+    }
+  },
+  "utility": {
+    "value": "Eversource (NSTAR Electric), Massachusetts",
+    "source": {
+      "name": "Customer bill (input)",
+      "url": "input:--utility"
+    },
+    "retrieved": "2026-11-07",
+    "confidence": "high"
+  },
+  "feeder": {
+    "id": null,
+    "name": null,
+    "substation": null,
+    "division": null
+  },
+  "feeder_voltage_kv": null,
+  "phases": null,
+  "hosting_capacity": {
+    "generation": null,
+    "load": null,
+    "computed": null,
+    "limiting_criteria": null
+  },
+  "match": null,
+  "extra": {},
+  "gaps": [
+    {
+      "field": "feeder.id",
+      "why": "The feeder determines interconnection screens, hosting limits and which utility engineer reviews the project.",
+      "how_to_collect": "Ask the utility for the circuit ID in a pre-application report, or ask the customer for a recent interconnection or service letter.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "feeder.name",
+      "why": "A feeder name is how utility engineers refer to the circuit in correspondence.",
+      "how_to_collect": "Request it in the utility pre-application report.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "feeder.substation",
+      "why": "The substation sets upstream limits (bank capacity, protection) that can constrain the project.",
+      "how_to_collect": "Request it in the utility pre-application report.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "feeder_voltage_kv",
+      "why": "Feeder voltage affects interconnection equipment and screening thresholds.",
+      "how_to_collect": "Request it in the utility pre-application report.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "hosting_capacity.generation",
+      "why": "Discharging the battery to the grid side behaves like generation; this limit can cap export or require upgrades.",
+      "how_to_collect": "Ask the utility in a pre-application inquiry; until then, design for non-export.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "hosting_capacity.load",
+      "why": "Charging the battery adds load; this limit can cap charging power or require upgrades.",
+      "how_to_collect": "Ask the utility in a pre-application inquiry for load capacity at the service point.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "hosting_capacity.computed",
+      "why": "Capacity values are only meaningful with the date the utility computed them.",
+      "how_to_collect": "Note the analysis date from the utility map when reviewing, or request it with the pre-application report.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    },
+    {
+      "field": "hosting_capacity.limiting_criteria",
+      "why": "The limiting criterion (thermal, voltage, protection) tells the engineer what kind of mitigation may be needed.",
+      "how_to_collect": "Request it in the utility pre-application report.",
+      "reason": "No adapter for Eversource (NSTAR Electric), Massachusetts yet."
+    }
+  ],
+  "site_gaps": [
+    {
+      "field": "service_voltage_and_configuration",
+      "why": "Sets the battery inverter voltage and the transformer, if any, between battery and switchgear.",
+      "how_to_collect": "Customer photo of the nameplate label on the main switchboard or panel (voltage, e.g. 480Y/277V, and phase/wire).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "main_service_amps_and_main_breaker",
+      "why": "The main breaker and service size limit how much battery power can connect without a service upgrade.",
+      "how_to_collect": "Customer photo of the main breaker handle and its rating label (e.g. 2000 A), plus the switchboard nameplate.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "bus_rating_and_configuration",
+      "why": "The bus rating decides whether a load-side connection passes the NEC 705.12 120% rule.",
+      "how_to_collect": "Customer photo of the switchboard or panel nameplate showing the bus rating.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "single_line_diagram",
+      "why": "The SLD shows the service, existing generation and where the battery can tie in.",
+      "how_to_collect": "Ask the customer for any existing single-line diagram (often framed in the electrical room or in past permit sets).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "transformer_kva_ratio_impedance_age",
+      "why": "Transformer size and impedance set available fault current and can limit export and charging.",
+      "how_to_collect": "Request transformer kVA, voltage ratio and impedance from the utility (pre-application or service request).",
+      "who": "utility"
+    },
+    {
+      "field": "available_fault_current",
+      "why": "Equipment must be rated for the available fault current at the point of connection.",
+      "how_to_collect": "Request an available-fault-current letter from the utility for the service address.",
+      "who": "utility"
+    },
+    {
+      "field": "spare_breaker_positions_or_bus_space",
+      "why": "An open breaker position or bus space is the cheapest place to connect the battery.",
+      "how_to_collect": "Customer photo of the main switchboard front showing breaker positions and any blank spaces (doors closed is fine).",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    },
+    {
+      "field": "service_point_and_meter_location",
+      "why": "The meter and service point locate the interconnection and the equipment pad.",
+      "how_to_collect": "Customer photo of the utility meter(s) and a marked-up site photo or map showing where they are.",
+      "who": "customer",
+      "safety": "Do not open equipment, remove covers, or climb to photograph a transformer; photograph only labels you can see from the floor."
+    }
+  ],
+  "notes": [
+    "No adapter yet for 'eversource_ma'. Hosting capacity map: not known yet. Every field is a gap."
+  ],
+  "errors": [],
+  "queries": [
+    {
+      "name": "US Census geocoder",
+      "url": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=16+Commerce+Way%2C+Woburn%2C+MA&benchmark=Public_AR_Current&format=json"
+    }
+  ],
+  "cautions": [
+    "Hosting capacity values are utility screening estimates, not an approval or a cost estimate, and they change over time.",
+    "A value of 0 can mean the feeder is already constrained, there is an upstream limit, or it was not analyzed. It does not mean the project cannot happen: the utility may require upgrades or conditions; confirm with a pre-application inquiry.",
+    "A battery both charges (acts like load) and discharges (acts like generation); both capacities matter."
+  ],
+  "site_id": "16-commerce-way-woburn-ma"
+}

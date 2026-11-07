@@ -1,8 +1,167 @@
 {
- "generated_at": "2026-11-07T21:59:42+00:00",
+ "generated_at": "2026-11-07T22:10:14+00:00",
  "generator": "eqore_site 0.1.0",
  "schema": "see schema.json",
  "sites": [
+  {
+   "slug": "1401-yosemite-ave-san-francisco-ca-94124",
+   "file": "records/1401-yosemite-ave-san-francisco-ca-94124.json",
+   "facility": null,
+   "address": "1401 Yosemite Ave, San Francisco, CA 94124",
+   "state": "CA",
+   "county_fips": "06075",
+   "status": "needs_confirmation",
+   "lead": {},
+   "location": {
+    "lat": 37.724715869328,
+    "lon": -122.3880311042
+   },
+   "utility_public": "Pacific Gas & Electric Company (IOU) or City and County of San Francisco - Hetch Hetchy Water and Power (POU)",
+   "seismic": "SDS 1.2 g \u00b7 SD1 1.23 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "4847024",
+     "situs": "1401 YOSEMITE AVE",
+     "match": "situs_address",
+     "distance_m": 6.7
+    },
+    {
+     "apn": "4846014",
+     "situs": "1353 YOSEMITE AVE",
+     "match": "nearby",
+     "distance_m": 17.2
+    },
+    {
+     "apn": "4831006",
+     "situs": "1400 YOSEMITE AVE",
+     "match": "nearby",
+     "distance_m": 18.9
+    }
+   ],
+   "warnings": [
+    "Inside a tsunami hazard area",
+    "Inside a liquefaction zone of required investigation",
+    "Flood zone not retrieved",
+    "Two utility territories overlap here",
+    "A building straddles APN 4847024's lot line",
+    "A building straddles APN 4847024's lot line",
+    "A building straddles APN 4847024's lot line"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 8,
+     "provided": 0,
+     "confirm": 14,
+     "needed": 33
+    },
+    "required_done_pct": 15,
+    "required_auto_pct": 40,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 15,
+      "needed": 14
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 18
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 7,
+     "info": 6
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 18,
+     "missing": 36
+    }
+   }
+  },
+  {
+   "slug": "1600-donner-ave-san-francisco-ca-94124",
+   "file": "records/1600-donner-ave-san-francisco-ca-94124.json",
+   "facility": null,
+   "address": "1600 Donner Ave, San Francisco, CA 94124",
+   "state": "CA",
+   "county_fips": "06075",
+   "status": "needs_confirmation",
+   "lead": {},
+   "location": {
+    "lat": 37.72447596003,
+    "lon": -122.394025589044
+   },
+   "utility_public": "Pacific Gas & Electric Company (IOU) or City and County of San Francisco - Hetch Hetchy Water and Power (POU)",
+   "seismic": "SDS 1.22 g \u00b7 SD1 1.25 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "4881023",
+     "situs": "1600 DONNER AVE",
+     "match": "situs_address",
+     "distance_m": 5.8
+    },
+    {
+     "apn": "4881012",
+     "situs": "5835 03RD ST",
+     "match": "nearby",
+     "distance_m": 17.6
+    },
+    {
+     "apn": "4881024",
+     "situs": "5945 03RD ST",
+     "match": "nearby",
+     "distance_m": 18.5
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved",
+    "Two utility territories overlap here",
+    "More than one zoning district near the point",
+    "A building straddles APN 4881023's lot line"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 9,
+     "provided": 0,
+     "confirm": 13,
+     "needed": 33
+    },
+    "required_done_pct": 16,
+    "required_auto_pct": 40,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 15,
+      "needed": 14
+     },
+     "EQORE": {
+      "confirm": 3,
+      "needed": 18
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 4,
+     "info": 5
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 8,
+     "review": 17,
+     "missing": 36
+    }
+   }
+  },
   {
    "slug": "1940-lundy-ave-san-jose-ca",
    "file": "records/1940-lundy-ave-san-jose-ca.json",
@@ -90,6 +249,161 @@
      "filled": 11,
      "review": 11,
      "missing": 39
+    }
+   }
+  },
+  {
+   "slug": "2050-galvez-ave-san-francisco-ca-94124",
+   "file": "records/2050-galvez-ave-san-francisco-ca-94124.json",
+   "facility": null,
+   "address": "2050 Galvez Ave, San Francisco, CA 94124",
+   "state": "CA",
+   "county_fips": "06075",
+   "status": "needs_confirmation",
+   "lead": {},
+   "location": {
+    "lat": 37.745523183059,
+    "lon": -122.396125696918
+   },
+   "utility_public": "Pacific Gas & Electric Company (IOU) or City and County of San Francisco - Hetch Hetchy Water and Power (POU)",
+   "seismic": "SDS 1.17 g \u00b7 SD1 1.17 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "5246052",
+     "situs": "2050 GALVEZ AVE",
+     "match": "situs_address",
+     "distance_m": 5.8
+    },
+    {
+     "apn": "5246050",
+     "situs": "390 SELBY ST",
+     "match": "nearby",
+     "distance_m": 18.6
+    },
+    {
+     "apn": "5249001",
+     "situs": "201 TOLAND ST",
+     "match": "nearby",
+     "distance_m": 18.6
+    }
+   ],
+   "warnings": [
+    "Inside a liquefaction zone of required investigation",
+    "Flood zone not retrieved",
+    "Two utility territories overlap here",
+    "A building straddles APN 5246052's lot line"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 8,
+     "provided": 0,
+     "confirm": 14,
+     "needed": 33
+    },
+    "required_done_pct": 15,
+    "required_auto_pct": 40,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 15,
+      "needed": 14
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 18
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 4,
+     "info": 7
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 18,
+     "missing": 36
+    }
+   }
+  },
+  {
+   "slug": "2150-cesar-chavez-st-san-francisco-ca-94124",
+   "file": "records/2150-cesar-chavez-st-san-francisco-ca-94124.json",
+   "facility": null,
+   "address": "2150 Cesar Chavez St, San Francisco, CA 94124",
+   "state": "CA",
+   "county_fips": "06075",
+   "status": "needs_confirmation",
+   "lead": {},
+   "location": {
+    "lat": 37.749515095136,
+    "lon": -122.401056219785
+   },
+   "utility_public": "Pacific Gas & Electric Company (IOU) or City and County of San Francisco - Hetch Hetchy Water and Power (POU)",
+   "seismic": "SDS 1.17 g \u00b7 SD1 1.17 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "4324002",
+     "situs": "1900-2190 CESAR CHAVEZ ST",
+     "match": "situs_address",
+     "distance_m": 171.5
+    },
+    {
+     "apn": "4328A005",
+     "situs": "2400 CESAR CHAVEZ ST",
+     "match": "nearby",
+     "distance_m": 5.1
+    },
+    {
+     "apn": "4342001A",
+     "situs": "0 UNKNOWN",
+     "match": "nearby",
+     "distance_m": 17.8
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved",
+    "Two utility territories overlap here",
+    "Address match is far from the geocoded point"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 9,
+     "provided": 0,
+     "confirm": 13,
+     "needed": 33
+    },
+    "required_done_pct": 16,
+    "required_auto_pct": 40,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 15,
+      "needed": 14
+     },
+     "EQORE": {
+      "confirm": 3,
+      "needed": 18
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 3,
+     "info": 6
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 8,
+     "review": 17,
+     "missing": 36
     }
    }
   },
@@ -449,6 +763,85 @@
      "filled": 11,
      "review": 12,
      "missing": 38
+    }
+   }
+  },
+  {
+   "slug": "888-tennessee-st-san-francisco-ca-94107",
+   "file": "records/888-tennessee-st-san-francisco-ca-94107.json",
+   "facility": null,
+   "address": "888 Tennessee St, San Francisco, CA 94107",
+   "state": "CA",
+   "county_fips": "06075",
+   "status": "needs_confirmation",
+   "lead": {},
+   "location": {
+    "lat": 37.760606359481,
+    "lon": -122.389575088906
+   },
+   "utility_public": "Pacific Gas & Electric Company (IOU) or City and County of San Francisco - Hetch Hetchy Water and Power (POU)",
+   "seismic": "SDS 1.12 g \u00b7 SD1 1.13 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "4060001",
+     "situs": "888-890 TENNESSEE ST",
+     "match": "situs_address",
+     "distance_m": 5.8
+    },
+    {
+     "apn": "4060004",
+     "situs": "0 UNKNOWN",
+     "match": "situs_address",
+     "distance_m": 63.5
+    },
+    {
+     "apn": "4059011",
+     "situs": "724-728 20TH ST",
+     "match": "nearby",
+     "distance_m": 18.6
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved",
+    "Two utility territories overlap here",
+    "Permits disagree on the number of stories",
+    "Parcel layers disagree on APN 4060004's address",
+    "2 parcels match the situs address"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 9,
+     "provided": 0,
+     "confirm": 13,
+     "needed": 33
+    },
+    "required_done_pct": 16,
+    "required_auto_pct": 40,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 15,
+      "needed": 14
+     },
+     "EQORE": {
+      "confirm": 3,
+      "needed": 18
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 5,
+     "info": 9
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 8,
+     "review": 17,
+     "missing": 36
     }
    }
   },
