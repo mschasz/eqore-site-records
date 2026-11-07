@@ -1,0 +1,842 @@
+{
+ "$defs": {
+  "Candidate": {
+   "description": "A parcel that might be the site. Never auto-selected.\n\n`fields` holds parcel-level facts for this candidate (buildings, use,\nenergy, permits...) so a UI can switch between candidates.",
+   "properties": {
+    "apn": {
+     "$ref": "#/$defs/Value"
+    },
+    "situs": {
+     "$ref": "#/$defs/Value"
+    },
+    "match_method": {
+     "description": "situs_address: address matches; situs_partial: number and street name match but suffix or direction differs; point_in_polygon: contains the geocoded point; nearest_address: closest house number on the same street; nearby: within a few metres; apn_lookup: fetched because a person supplied this APN",
+     "enum": [
+      "situs_address",
+      "situs_partial",
+      "point_in_polygon",
+      "nearest_address",
+      "nearby",
+      "apn_lookup"
+     ],
+     "title": "Match Method",
+     "type": "string"
+    },
+    "distance_m": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Geocoded point to parcel boundary, 0 if inside",
+     "title": "Distance M"
+    },
+    "contains_point": {
+     "default": false,
+     "title": "Contains Point",
+     "type": "boolean"
+    },
+    "area_sqft": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/Value"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    },
+    "geometry": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "GeoJSON polygon, EPSG:4326",
+     "title": "Geometry"
+    },
+    "related_apns": {
+     "default": [],
+     "description": "Other APNs with the identical polygon (e.g. condo units)",
+     "items": {
+      "type": "string"
+     },
+     "title": "Related Apns",
+     "type": "array"
+    },
+    "found_in": {
+     "default": [],
+     "description": "Source keys whose layers list this parcel",
+     "items": {
+      "type": "string"
+     },
+     "title": "Found In",
+     "type": "array"
+    },
+    "situs_matched_by": {
+     "default": [],
+     "description": "Source keys whose situs address matches the entered address",
+     "items": {
+      "type": "string"
+     },
+     "title": "Situs Matched By",
+     "type": "array"
+    },
+    "fields": {
+     "default": [],
+     "items": {
+      "$ref": "#/$defs/Field"
+     },
+     "title": "Fields",
+     "type": "array"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "required": [
+    "apn",
+    "situs",
+    "match_method"
+   ],
+   "title": "Candidate",
+   "type": "object"
+  },
+  "Field": {
+   "description": "A record field: a sourced value plus what the UI needs to show it.",
+   "properties": {
+    "value": {
+     "default": null,
+     "title": "Value"
+    },
+    "source": {
+     "description": "Machine key of the source, e.g. 'census_geocoder'",
+     "title": "Source",
+     "type": "string"
+    },
+    "source_label": {
+     "description": "Human-readable source name",
+     "title": "Source Label",
+     "type": "string"
+    },
+    "source_url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "URL queried or documenting the source",
+     "title": "Source Url"
+    },
+    "vintage": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Data date / edition as stated by the source, or 'queried YYYY-MM-DD'",
+     "title": "Vintage"
+    },
+    "confidence": {
+     "default": "low",
+     "enum": [
+      "high",
+      "medium",
+      "low"
+     ],
+     "title": "Confidence",
+     "type": "string"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    },
+    "id": {
+     "description": "Stable field id, e.g. 'a_ll', 'e_liq' (matches the Hayward reference page)",
+     "title": "Id",
+     "type": "string"
+    },
+    "section": {
+     "title": "Section",
+     "type": "string"
+    },
+    "label": {
+     "title": "Label",
+     "type": "string"
+    },
+    "display": {
+     "default": "",
+     "description": "Short human-readable rendering of `value`",
+     "title": "Display",
+     "type": "string"
+    },
+    "status": {
+     "description": "filled = auto, trust it; confirm = auto, a person must confirm; needed = not available; provided = entered by a person",
+     "enum": [
+      "filled",
+      "confirm",
+      "needed",
+      "provided"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "who": {
+     "anyOf": [
+      {
+       "enum": [
+        "Customer",
+        "EQORE",
+        "Utility"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Who provides or confirms it when status is confirm/needed",
+     "title": "Who"
+    }
+   },
+   "required": [
+    "source",
+    "source_label",
+    "id",
+    "section",
+    "label",
+    "status"
+   ],
+   "title": "Field",
+   "type": "object"
+  },
+  "Flag": {
+   "properties": {
+    "severity": {
+     "enum": [
+      "warn",
+      "info"
+     ],
+     "title": "Severity",
+     "type": "string"
+    },
+    "title": {
+     "title": "Title",
+     "type": "string"
+    },
+    "detail": {
+     "title": "Detail",
+     "type": "string"
+    },
+    "field_ids": {
+     "default": [],
+     "items": {
+      "type": "string"
+     },
+     "title": "Field Ids",
+     "type": "array"
+    },
+    "origin": {
+     "default": "",
+     "description": "'crosscheck' for flags recomputed by crosscheck.run",
+     "title": "Origin",
+     "type": "string"
+    }
+   },
+   "required": [
+    "severity",
+    "title",
+    "detail"
+   ],
+   "title": "Flag",
+   "type": "object"
+  },
+  "FormPrefillItem": {
+   "description": "One line of the permit/lead-form prefill (prefill.py).",
+   "properties": {
+    "form": {
+     "default": "",
+     "description": "Submittal section, e.g. '2. Site plan'",
+     "title": "Form",
+     "type": "string"
+    },
+    "field": {
+     "title": "Field",
+     "type": "string"
+    },
+    "value": {
+     "default": null,
+     "title": "Value"
+    },
+    "status": {
+     "description": "filled: from a source or a person; review: found, needs a person; missing",
+     "enum": [
+      "filled",
+      "review",
+      "missing"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "from_field": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Record field id it comes from",
+     "title": "From Field"
+    },
+    "source_label": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Source Label"
+    },
+    "confidence": {
+     "anyOf": [
+      {
+       "enum": [
+        "high",
+        "medium",
+        "low"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Confidence"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "required": [
+    "field",
+    "status"
+   ],
+   "title": "FormPrefillItem",
+   "type": "object"
+  },
+  "Missing": {
+   "properties": {
+    "item": {
+     "title": "Item",
+     "type": "string"
+    },
+    "why": {
+     "title": "Why",
+     "type": "string"
+    },
+    "who": {
+     "enum": [
+      "Customer",
+      "EQORE",
+      "Utility"
+     ],
+     "title": "Who",
+     "type": "string"
+    },
+    "field_id": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Field Id"
+    }
+   },
+   "required": [
+    "item",
+    "why",
+    "who"
+   ],
+   "title": "Missing",
+   "type": "object"
+  },
+  "ProposedSystem": {
+   "description": "The BESS EQORE proposed. All optional; echoed into the record.",
+   "properties": {
+    "manufacturer": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Manufacturer"
+    },
+    "model": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Model"
+    },
+    "energy_kwh": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Energy Kwh"
+    },
+    "power_kw": {
+     "anyOf": [
+      {
+       "type": "number"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Power Kw"
+    },
+    "chemistry": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Chemistry"
+    },
+    "placement": {
+     "anyOf": [
+      {
+       "enum": [
+        "indoor",
+        "outdoor",
+        "rooftop"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Placement"
+    },
+    "notes": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Notes"
+    }
+   },
+   "title": "ProposedSystem",
+   "type": "object"
+  },
+  "RecordInput": {
+   "properties": {
+    "address": {
+     "title": "Address",
+     "type": "string"
+    },
+    "proposed_system": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/ProposedSystem"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null
+    }
+   },
+   "required": [
+    "address"
+   ],
+   "title": "RecordInput",
+   "type": "object"
+  },
+  "SourceError": {
+   "properties": {
+    "source": {
+     "title": "Source",
+     "type": "string"
+    },
+    "source_label": {
+     "title": "Source Label",
+     "type": "string"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Url"
+    },
+    "error": {
+     "title": "Error",
+     "type": "string"
+    },
+    "at": {
+     "title": "At",
+     "type": "string"
+    }
+   },
+   "required": [
+    "source",
+    "source_label",
+    "error",
+    "at"
+   ],
+   "title": "SourceError",
+   "type": "object"
+  },
+  "SourceStatus": {
+   "description": "One row of the Sources tab: what was consulted and what came back.",
+   "properties": {
+    "source": {
+     "title": "Source",
+     "type": "string"
+    },
+    "source_label": {
+     "title": "Source Label",
+     "type": "string"
+    },
+    "url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Url"
+    },
+    "vintage": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Vintage"
+    },
+    "license": {
+     "default": "not stated",
+     "title": "License",
+     "type": "string"
+    },
+    "status": {
+     "enum": [
+      "retrieved",
+      "no_result",
+      "failed",
+      "not_queried"
+     ],
+     "title": "Status",
+     "type": "string"
+    },
+    "summary": {
+     "default": "",
+     "title": "Summary",
+     "type": "string"
+    }
+   },
+   "required": [
+    "source",
+    "source_label",
+    "status"
+   ],
+   "title": "SourceStatus",
+   "type": "object"
+  },
+  "Value": {
+   "description": "One sourced value. `value` is None when the lookup produced nothing.",
+   "properties": {
+    "value": {
+     "default": null,
+     "title": "Value"
+    },
+    "source": {
+     "description": "Machine key of the source, e.g. 'census_geocoder'",
+     "title": "Source",
+     "type": "string"
+    },
+    "source_label": {
+     "description": "Human-readable source name",
+     "title": "Source Label",
+     "type": "string"
+    },
+    "source_url": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "URL queried or documenting the source",
+     "title": "Source Url"
+    },
+    "vintage": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "description": "Data date / edition as stated by the source, or 'queried YYYY-MM-DD'",
+     "title": "Vintage"
+    },
+    "confidence": {
+     "default": "low",
+     "enum": [
+      "high",
+      "medium",
+      "low"
+     ],
+     "title": "Confidence",
+     "type": "string"
+    },
+    "note": {
+     "default": "",
+     "title": "Note",
+     "type": "string"
+    }
+   },
+   "required": [
+    "source",
+    "source_label"
+   ],
+   "title": "Value",
+   "type": "object"
+  }
+ },
+ "properties": {
+  "schema_version": {
+   "default": "0.1.0",
+   "title": "Schema Version",
+   "type": "string"
+  },
+  "record_id": {
+   "anyOf": [
+    {
+     "type": "string"
+    },
+    {
+     "type": "null"
+    }
+   ],
+   "default": null,
+   "description": "Set by the API store",
+   "title": "Record Id"
+  },
+  "generated_at": {
+   "title": "Generated At",
+   "type": "string"
+  },
+  "status": {
+   "default": "needs_confirmation",
+   "enum": [
+    "needs_confirmation",
+    "confirmed"
+   ],
+   "title": "Status",
+   "type": "string"
+  },
+  "input": {
+   "$ref": "#/$defs/RecordInput"
+  },
+  "location": {
+   "anyOf": [
+    {
+     "$ref": "#/$defs/Value"
+    },
+    {
+     "type": "null"
+    }
+   ],
+   "default": null,
+   "description": "Geocoded point {lat, lon}. Not guaranteed to be inside the lot."
+  },
+  "county_fips": {
+   "anyOf": [
+    {
+     "type": "string"
+    },
+    {
+     "type": "null"
+    }
+   ],
+   "default": null,
+   "title": "County Fips"
+  },
+  "fields": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/Field"
+   },
+   "title": "Fields",
+   "type": "array"
+  },
+  "candidates": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/Candidate"
+   },
+   "title": "Candidates",
+   "type": "array"
+  },
+  "confirmed_apn": {
+   "anyOf": [
+    {
+     "type": "string"
+    },
+    {
+     "type": "null"
+    }
+   ],
+   "default": null,
+   "title": "Confirmed Apn"
+  },
+  "shown_candidate": {
+   "anyOf": [
+    {
+     "type": "string"
+    },
+    {
+     "type": "null"
+    }
+   ],
+   "default": null,
+   "description": "APN whose parcel-level fields are shown at record level",
+   "title": "Shown Candidate"
+  },
+  "flags": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/Flag"
+   },
+   "title": "Flags",
+   "type": "array"
+  },
+  "missing": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/Missing"
+   },
+   "title": "Missing",
+   "type": "array"
+  },
+  "source_errors": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/SourceError"
+   },
+   "title": "Source Errors",
+   "type": "array"
+  },
+  "sources": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/SourceStatus"
+   },
+   "title": "Sources",
+   "type": "array"
+  },
+  "form_prefill": {
+   "default": [],
+   "items": {
+    "$ref": "#/$defs/FormPrefillItem"
+   },
+   "title": "Form Prefill",
+   "type": "array"
+  },
+  "summary": {
+   "additionalProperties": true,
+   "default": {},
+   "description": "Completeness against the required-input list, who owes what, flag counts",
+   "title": "Summary",
+   "type": "object"
+  }
+ },
+ "required": [
+  "input"
+ ],
+ "title": "SiteRecord",
+ "type": "object"
+}

@@ -1,0 +1,62 @@
+form,field,value,status,from_field,source,confidence,note
+1. Cover sheet and project data,Project address,"1940 LUNDY AVE, SAN JOSE, CA, 95131",filled,a_cen,US Census Geocoder,medium,
+1. Cover sheet and project data,Assessor parcel number (APN),"24415012, 24415013, 24419012",review,b_apn,DWR statewide assessor parcels (LightBox),low,Not confirmed: candidates only. Confirm the APN before filing.
+1. Cover sheet and project data,Owner of record,,missing,a_own,,,Shown once one parcel is the address match or is confirmed (county layers carry owners; the statewide layer does not).
+1. Cover sheet and project data,Owner mailing address,,missing,a_own,,,Shown once one parcel is the address match or is confirmed (county layers carry owners; the statewide layer does not).
+1. Cover sheet and project data,Applicant's relationship to the property / owner consent,,missing,a_rel,,,"Owner, tenant or agent; tenants need the owner's consent."
+1. Cover sheet and project data,Jurisdiction,"City of San Jose, Santa Clara County",filled,z_jur,CA city boundaries (DOC mirror of CDTFA/BOE),medium,
+1. Cover sheet and project data,Zoning district,"IP, Industrial Park (San Jose)",review,z_zone,ABAG/MTC Draft Bay Area Zoning 2023,low,
+1. Cover sheet and project data,Lot area,,missing,b_area,,,Shown once one parcel is the situs match or is confirmed.
+1. Cover sheet and project data,"Occupancy group, construction type, sprinklers",,missing,b_occ,,,Not in any public layer here; see the certificate of occupancy or old plan sets.
+1. Cover sheet and project data,Building height and stories,,missing,b_height,,,No reliable public height data.
+1. Cover sheet and project data,Year built,,missing,b_year,,,No value in the record.
+1. Cover sheet and project data,Code edition,"2025 California Building Standards Code (Title 24), statewide effective 2026-01-01",filled,d_code,CA Building Standards Commission bulletin 25-01,high,
+1. Cover sheet and project data,Scope of work,"Install a behind-the-meter battery energy storage system (300 kWh, 150 kW), location TBD, at 1940 Lundy Ave, San Jose, CA (APN to be confirmed), with associated electrical work and utility interconnection.",review,g_sys,Lead form (as entered),,Drafted from the proposed system; EQORE edits.
+1. Cover sheet and project data,Fire hazard severity zone,None mapped at this point,filled,e_fhsz,CAL FIRE fire hazard severity zones,medium,
+1. Cover sheet and project data,Flood zone,,missing,e_flood,,,"Not fetched automatically: FEMA's host refused our automated fetch under robots.txt. Look up the FIRM manually at the link, or choose a permitted query path."
+1. Cover sheet and project data,Liquefaction / seismic hazard zone,Inside a Liquefaction Zone of Required Investigation,review,e_liq,CGS liquefaction zones of required investigation,medium,
+1. Cover sheet and project data,Tsunami hazard area,Outside the hazard area,filled,e_tsu,CGS tsunami hazard area,medium,
+1. Cover sheet and project data,Seismic design category,E,review,e_seis,USGS Seismic Design Web Services (ASCE 7-22),low,Risk Category II and Site Class D assumed; a geotechnical report sets the site class.
+2. Site plan,Property lines (parcel boundary),,missing,b_geom,,,Shown once one parcel is the situs match or is confirmed.
+2. Site plan,Existing buildings,,missing,b_bld,,,Footprints come with a county adapter and a single situs match or a confirmed APN.
+2. Site plan,New equipment location,,missing,g_pin,,,Customer marks the location on the aerial.
+2. Site plan,Distances to property lines and buildings (screening),,missing,g_dist,,,Screening distances from public GIS layers; the drawn site plan governs.
+2. Site plan,Conduit routes,,missing,g_conduit,,,EQORE designs.
+2. Site plan,Easements,,missing,b_ease,,,Needs a title report or recorded survey.
+2. Site plan,Fire apparatus access and nearest hydrant,,missing,g_access,,,Not public in bulk.
+2. Site plan,Aerial base image,"NAIP 2022, 60 cm, 240 m square around the point",filled,b_img,CDFW NAIP 2022 4-band ImageServer (60 cm),high,
+3. Floor plan and clearances,Installation type (indoor / outdoor / rooftop) and mounting,,missing,g_type,,,Customer and EQORE decide.
+3. Floor plan and clearances,Working clearances and ventilation,,missing,g_clear,,,EQORE designs against the adopted fire code (not encoded).
+3. Floor plan and clearances,First-responder disconnect location,,missing,,,,EQORE marks it on the floor/site plan.
+4. Single-line diagram and service,Serving utility,Pacific Gas & Electric Company (IOU) or Power and Water Resource Pooling Authority (POU),review,f_util,CEC electric load serving entities,low,
+4. Single-line diagram and service,"Service voltage, phase, main breaker, switchgear","480Y/277V, 1,000 kVA, 1,600 A main",filled,f_svc,Entered by a person,medium,
+4. Single-line diagram and service,Meter / service account number,,missing,f_acct,,,Not public.
+4. Single-line diagram and service,"Existing PV, generator, ATS",,missing,f_der,,,Not reliably public.
+4. Single-line diagram and service,Available fault current,,missing,f_fault,,,Utility provides on request.
+4. Single-line diagram and service,Single-line diagram,,missing,f_sld,,,From facilities records or an electrician.
+4. Single-line diagram and service,Interconnection path,,missing,d_ic,,,"Depends on which utility serves the meter (PG&E, PWRPA)."
+4. Single-line diagram and service,Distribution feeder,MONTAGUE 2106 (21 kV),review,f_feeder,PG&E GRIP feeder detail,low,
+5. Calculations,BESS energy rating (kWh),300.0,filled,g_sys,Lead form (as entered),,
+5. Calculations,BESS power rating (kW),150.0,filled,g_sys,Lead form (as entered),,
+5. Calculations,Seismic design: SDS,1.28 g,review,e_seis,USGS Seismic Design Web Services (ASCE 7-22),low,Risk Category II and Site Class D assumed; a geotechnical report sets the site class.
+5. Calculations,Seismic design: SD1,1.13 g,review,e_seis,USGS Seismic Design Web Services (ASCE 7-22),low,Risk Category II and Site Class D assumed; a geotechnical report sets the site class.
+5. Calculations,Structural loads / anchorage,,missing,g_struct,,,EQORE designs.
+6. Manufacturer documents and labels,Manufacturer and model,,missing,g_sys,,,From EQORE's system selection.
+6. Manufacturer documents and labels,Battery chemistry,,missing,g_sys,,,From EQORE's system selection.
+6. Manufacturer documents and labels,"Manufacturer spec sheets, installation manual, listing documents",,missing,,,,EQORE attaches.
+6. Manufacturer documents and labels,Equipment labels and placards,,missing,,,,EQORE prepares per the adopted code (not encoded here).
+7. Fire district,Fire authority,"San Jose FD (FDID 43070), 1661 SENTER ROAD, San Jose 95112. (408) 794-7000",review,d_fire,CAL FIRE local fire districts,medium,
+7. Fire district,Separate fire district plan-check fee,,missing,,,,Woodside charges one; confirm whether this fire AHJ does.
+8. Permit process,Building department and permit portal,,missing,d_bldg,,,No row for San Jose in the EQORE AHJ table yet; add one and have a person confirm it.
+8. Permit process,Energy storage submittal checklist,,missing,d_check,,,No row for San Jose in the EQORE AHJ table yet; add one and have a person confirm it.
+8. Permit process,Local code amendments,,missing,d_amend,,,No statewide dataset lists them; read the adopting ordinance.
+8. Permit process,Planning contact,,missing,d_plan,,,No row for San Jose in the EQORE AHJ table yet; add one and have a person confirm it.
+8. Permit process,Energy storage allowed in this zone?,,missing,z_use,,,The rule is ordinance text; read the local zoning code.
+"9. EQORE lead form, site section (assumed fields)",Site address,"1940 LUNDY AVE, SAN JOSE, CA, 95131",filled,a_cen,US Census Geocoder,medium,
+"9. EQORE lead form, site section (assumed fields)",Building use,,missing,b_use,,,No value in the record.
+"9. EQORE lead form, site section (assumed fields)",Own or lease,,missing,a_rel,,,"Owner, tenant or agent; tenants need the owner's consent."
+"9. EQORE lead form, site section (assumed fields)",Electric utility,Pacific Gas & Electric Company (IOU) or Power and Water Resource Pooling Authority (POU),review,f_util,CEC electric load serving entities,low,
+"9. EQORE lead form, site section (assumed fields)",Retail generation provider,,missing,f_cca,,,Bundled utility or community choice; shown on the bill.
+"9. EQORE lead form, site section (assumed fields)",Rate schedule,PG&E B-19,filled,f_rate,Entered by a person,medium,
+"9. EQORE lead form, site section (assumed fields)",Annual electricity use,,missing,f_kwh,,,No public consumption data at this site; 12 months of bills.
+"9. EQORE lead form, site section (assumed fields)",15-minute interval data,,missing,f_int,,,Customer authorizes a utility data share or uploads Green Button.

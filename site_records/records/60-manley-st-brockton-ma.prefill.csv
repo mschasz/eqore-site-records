@@ -1,0 +1,62 @@
+form,field,value,status,from_field,source,confidence,note
+1. Cover sheet and project data,Project address,"60 MANLEY ST, BROCKTON, MA, 02301",filled,a_cen,US Census Geocoder,medium,
+1. Cover sheet and project data,Assessor parcel number (APN),"019-031, F_777348_2845480, 009-188",review,b_apn,MassGIS Property Tax Parcels (assessor data joined),low,Not confirmed: candidates only. Confirm the APN before filing.
+1. Cover sheet and project data,Owner of record,,missing,a_own,,,Shown once one parcel is the address match or is confirmed (county layers carry owners; the statewide layer does not).
+1. Cover sheet and project data,Owner mailing address,,missing,a_own,,,Shown once one parcel is the address match or is confirmed (county layers carry owners; the statewide layer does not).
+1. Cover sheet and project data,Applicant's relationship to the property / owner consent,,missing,a_rel,,,"Owner, tenant or agent; tenants need the owner's consent."
+1. Cover sheet and project data,Jurisdiction,"Brockton, Plymouth County, MA",filled,z_jur,US Census Geocoder,high,
+1. Cover sheet and project data,Zoning district,,missing,z_zone,,,No statewide zoning layer; the assessor zoning field is used when a parcel is matched.
+1. Cover sheet and project data,Lot area,,missing,b_area,,,Shown once one parcel is the situs match or is confirmed.
+1. Cover sheet and project data,"Occupancy group, construction type, sprinklers",,missing,b_occ,,,Not in any public layer here; see the certificate of occupancy or old plan sets.
+1. Cover sheet and project data,Building height and stories,,missing,b_height,,,No reliable public height data.
+1. Cover sheet and project data,Year built,,missing,b_year,,,No value in the record.
+1. Cover sheet and project data,Code edition,,missing,d_code,,,Massachusetts State Building Code (780 CMR) and Fire Code (527 CMR); confirm the edition in effect for the filing date. Not encoded here.
+1. Cover sheet and project data,Scope of work,"Install a behind-the-meter battery energy storage system (600 kWh, 150 kW), location TBD, at 60 Manley St, Brockton, MA (APN to be confirmed), with associated electrical work and utility interconnection.",review,g_sys,Lead form (as entered),,Drafted from the proposed system; EQORE edits.
+1. Cover sheet and project data,Fire hazard severity zone,,missing,e_fhsz,,,California FHSZ does not apply. Massachusetts has no statewide wildfire hazard zone map.
+1. Cover sheet and project data,Flood zone,,missing,e_flood,,,"Not fetched automatically: FEMA's host refused our automated fetch under robots.txt. Look up the FIRM manually at the link, or choose a permitted query path."
+1. Cover sheet and project data,Liquefaction / seismic hazard zone,,missing,e_liq,,,No statewide liquefaction zone map in Massachusetts; a geotechnical report decides.
+1. Cover sheet and project data,Tsunami hazard area,,missing,e_tsu,,,No statewide tsunami hazard layer used for Massachusetts.
+1. Cover sheet and project data,Seismic design category,B,review,e_seis,USGS Seismic Design Web Services (ASCE 7-22),low,Risk Category II and Site Class D assumed; a geotechnical report sets the site class.
+2. Site plan,Property lines (parcel boundary),,missing,b_geom,,,Shown once one parcel is the situs match or is confirmed.
+2. Site plan,Existing buildings,,missing,b_bld,,,Footprints come with a county adapter and a single situs match or a confirmed APN.
+2. Site plan,New equipment location,,missing,g_pin,,,Customer marks the location on the aerial.
+2. Site plan,Distances to property lines and buildings (screening),,missing,g_dist,,,Screening distances from public GIS layers; the drawn site plan governs.
+2. Site plan,Conduit routes,,missing,g_conduit,,,EQORE designs.
+2. Site plan,Easements,,missing,b_ease,,,Needs a title report or recorded survey.
+2. Site plan,Fire apparatus access and nearest hydrant,,missing,g_access,,,Not public in bulk.
+2. Site plan,Aerial base image,,missing,b_img,,,CDFW NAIP service is California-only; use MassGIS orthoimagery or the map basemap.
+3. Floor plan and clearances,Installation type (indoor / outdoor / rooftop) and mounting,,missing,g_type,,,Customer and EQORE decide.
+3. Floor plan and clearances,Working clearances and ventilation,,missing,g_clear,,,EQORE designs against the adopted fire code (not encoded).
+3. Floor plan and clearances,First-responder disconnect location,,missing,,,,EQORE marks it on the floor/site plan.
+4. Single-line diagram and service,Serving utility,Massachusetts Electric d/b/a National Grid,review,f_util,MassGIS Electric Utility Providers by town,medium,
+4. Single-line diagram and service,"Service voltage, phase, main breaker, switchgear","480Y/277V, 1,500 kVA, 2,000 A main",filled,f_svc,Entered by a person,medium,
+4. Single-line diagram and service,Meter / service account number,,missing,f_acct,,,Not public.
+4. Single-line diagram and service,"Existing PV, generator, ATS",,missing,f_der,,,Not reliably public.
+4. Single-line diagram and service,Available fault current,,missing,f_fault,,,Utility provides on request.
+4. Single-line diagram and service,Single-line diagram,,missing,f_sld,,,From facilities records or an electrician.
+4. Single-line diagram and service,Interconnection path,National Grid (Massachusetts Electric): Massachusetts DPU interconnection tariff for distributed generation,review,d_ic,MassGIS Electric Utility Providers by town,low,
+4. Single-line diagram and service,Distribution feeder,,missing,f_feeder,,,PG&E GRIP covers PG&E territory only; other utilities provide it on request.
+5. Calculations,BESS energy rating (kWh),600.0,filled,g_sys,Lead form (as entered),,
+5. Calculations,BESS power rating (kW),150.0,filled,g_sys,Lead form (as entered),,
+5. Calculations,Seismic design: SDS,0.17 g,review,e_seis,USGS Seismic Design Web Services (ASCE 7-22),low,Risk Category II and Site Class D assumed; a geotechnical report sets the site class.
+5. Calculations,Seismic design: SD1,0.07 g,review,e_seis,USGS Seismic Design Web Services (ASCE 7-22),low,Risk Category II and Site Class D assumed; a geotechnical report sets the site class.
+5. Calculations,Structural loads / anchorage,,missing,g_struct,,,EQORE designs.
+6. Manufacturer documents and labels,Manufacturer and model,,missing,g_sys,,,From EQORE's system selection.
+6. Manufacturer documents and labels,Battery chemistry,,missing,g_sys,,,From EQORE's system selection.
+6. Manufacturer documents and labels,"Manufacturer spec sheets, installation manual, listing documents",,missing,,,,EQORE attaches.
+6. Manufacturer documents and labels,Equipment labels and placards,,missing,,,,EQORE prepares per the adopted code (not encoded here).
+7. Fire district,Fire authority,Brockton Fire Department,review,d_fire,US Census Geocoder,low,
+7. Fire district,Separate fire district plan-check fee,,missing,,,,Woodside charges one; confirm whether this fire AHJ does.
+8. Permit process,Building department and permit portal,Brockton building department,review,d_bldg,US Census Geocoder,low,
+8. Permit process,Energy storage submittal checklist,,missing,d_check,,,Ask the permit center which permits and plans apply.
+8. Permit process,Local code amendments,,missing,d_amend,,,No statewide dataset lists them; read the adopting ordinance.
+8. Permit process,Planning contact,,missing,d_plan,,,No confirmed row in the EQORE AHJ table for this jurisdiction.
+8. Permit process,Energy storage allowed in this zone?,,missing,z_use,,,The rule is ordinance text; read the local zoning code.
+"9. EQORE lead form, site section (assumed fields)",Site address,"60 MANLEY ST, BROCKTON, MA, 02301",filled,a_cen,US Census Geocoder,medium,
+"9. EQORE lead form, site section (assumed fields)",Building use,,missing,b_use,,,No value in the record.
+"9. EQORE lead form, site section (assumed fields)",Own or lease,,missing,a_rel,,,"Owner, tenant or agent; tenants need the owner's consent."
+"9. EQORE lead form, site section (assumed fields)",Electric utility,Massachusetts Electric d/b/a National Grid,review,f_util,MassGIS Electric Utility Providers by town,medium,
+"9. EQORE lead form, site section (assumed fields)",Retail generation provider,,missing,f_cca,,,Bundled utility or community choice; shown on the bill.
+"9. EQORE lead form, site section (assumed fields)",Rate schedule,Eversource G-2,filled,f_rate,Entered by a person,medium,
+"9. EQORE lead form, site section (assumed fields)",Annual electricity use,,missing,f_kwh,,,No public consumption data at this site; 12 months of bills.
+"9. EQORE lead form, site section (assumed fields)",15-minute interval data,,missing,f_int,,,Customer authorizes a utility data share or uploads Green Button.

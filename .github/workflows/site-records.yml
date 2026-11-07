@@ -1,0 +1,49 @@
+# Build site records on GitHub, no API keys needed (all sources are public).
+#  - Actions tab -> "Site records" -> Run workflow -> enter an address, or
+#  - edit site_records/facilities.json and push.
+# Results are committed to site_records/ (index.json, records/*.json, records.js).
+name: Site records
+
+on:
+  workflow_dispatch:
+    inputs:
+      address:
+        description: "Site address (e.g. 16 Commerce Way, Woburn, MA). Leave blank to rebuild every facility."
+        required: false
+  push:
+    paths:
+      - site_records/facilities.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-records
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r site_records/requirements.txt
+      - name: Build records
+        env:
+          ADDRESS: ${{ github.event.inputs.address }}
+        run: |
+          if [ -n "$ADDRESS" ]; then
+            python -m eqore_site.export --facilities site_records/facilities.json --address "$ADDRESS" --out site_records --cache ""
+          else
+            python -m eqore_site.export --facilities site_records/facilities.json --out site_records --cache ""
+          fi
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add site_records
+          git diff --cached --quiet || git commit -m "Update site records${ADDRESS:+: $ADDRESS}" && git push
+        env:
+          ADDRESS: ${{ github.event.inputs.address }}

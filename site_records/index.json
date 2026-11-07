@@ -1,0 +1,891 @@
+{
+ "generated_at": "2026-11-07T21:59:42+00:00",
+ "generator": "eqore_site 0.1.0",
+ "schema": "see schema.json",
+ "sites": [
+  {
+   "slug": "1940-lundy-ave-san-jose-ca",
+   "file": "records/1940-lundy-ave-san-jose-ca.json",
+   "facility": "Silicon Valley Precision Machining",
+   "address": "1940 Lundy Ave, San Jose, CA",
+   "state": "CA",
+   "county_fips": "06085",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Silicon Valley Precision Machining",
+    "segment": "CNC machining",
+    "utility": "PG&E",
+    "rate": "B-19",
+    "service": "480Y/277V, 1,000 kVA, 1,600 A main",
+    "peak_kw": 610.2,
+    "target_kw": 480,
+    "peak_basis": "billed max",
+    "system_kw": 150,
+    "system_kwh": 300,
+    "system_status": "indicative"
+   },
+   "location": {
+    "lat": 37.394900868641,
+    "lon": -121.890702076387
+   },
+   "utility_public": "Pacific Gas & Electric Company (IOU) or Power and Water Resource Pooling Authority (POU)",
+   "seismic": "SDS 1.28 g \u00b7 SD1 1.13 g \u00b7 SDC E",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "24415012",
+     "situs": "1980 LUNDY AVE, SAN JOSE",
+     "match": "nearby",
+     "distance_m": 8.0
+    },
+    {
+     "apn": "24415013",
+     "situs": "1996 LUNDY AVE, SAN JOSE",
+     "match": "nearby",
+     "distance_m": 16.8
+    },
+    {
+     "apn": "24419012",
+     "situs": "1955 LUNDY AVE, SAN JOSE",
+     "match": "nearby",
+     "distance_m": 24.6
+    }
+   ],
+   "warnings": [
+    "Inside a liquefaction zone of required investigation",
+    "Flood zone not retrieved",
+    "Two utility territories overlap here",
+    "No parcel carries house number 1940"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 8,
+     "provided": 2,
+     "confirm": 8,
+     "needed": 37
+    },
+    "required_done_pct": 18,
+    "required_auto_pct": 33,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 21
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 4,
+     "info": 3
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 11,
+     "review": 11,
+     "missing": 39
+    }
+   }
+  },
+  {
+   "slug": "2250-livingston-st-oakland-ca",
+   "file": "records/2250-livingston-st-oakland-ca.json",
+   "facility": "Estuary Cold Storage",
+   "address": "2250 Livingston St, Oakland, CA",
+   "state": "CA",
+   "county_fips": "06001",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Estuary Cold Storage",
+    "segment": "Cold storage",
+    "utility": "PG&E",
+    "rate": "B-20",
+    "service": "480Y/277V, 3,000 kVA, 4,000 A main",
+    "peak_kw": 1420.0,
+    "target_kw": 1150,
+    "peak_basis": "15-min interval",
+    "system_kw": 300,
+    "system_kwh": 900,
+    "system_status": "indicative"
+   },
+   "location": {
+    "lat": 37.780972188847,
+    "lon": -122.239850811253
+   },
+   "utility_public": "Pacific Gas & Electric Company",
+   "seismic": "SDS 1.31 g \u00b7 SD1 1.13 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "19-49-3-11",
+     "situs": "2140 LIVINGSTON ST, OAKLAND",
+     "match": "nearby",
+     "distance_m": 8.7
+    },
+    {
+     "apn": "19-49-3-7",
+     "situs": "2100 LIVINGSTON ST, OAKLAND",
+     "match": "nearby",
+     "distance_m": 10.2
+    },
+    {
+     "apn": "19-49-3-12",
+     "situs": "2160 LIVINGSTON ST, OAKLAND",
+     "match": "nearby",
+     "distance_m": 13.3
+    }
+   ],
+   "warnings": [
+    "Inside a tsunami hazard area",
+    "Inside a liquefaction zone of required investigation",
+    "Flood zone not retrieved",
+    "No parcel carries house number 2250"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 8,
+     "provided": 2,
+     "confirm": 9,
+     "needed": 36
+    },
+    "required_done_pct": 18,
+    "required_auto_pct": 35,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 5,
+      "needed": 20
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 4,
+     "info": 4
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 11,
+     "review": 12,
+     "missing": 38
+    }
+   }
+  },
+  {
+   "slug": "2448-industrial-pkwy-west-hayward-ca-94545",
+   "file": "records/2448-industrial-pkwy-west-hayward-ca-94545.json",
+   "facility": "ThermoFusion Inc.",
+   "address": "2448 Industrial Pkwy West, Hayward, CA 94545",
+   "state": "CA",
+   "county_fips": "06001",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "ThermoFusion Inc.",
+    "segment": "Heat treating",
+    "utility": "PG&E",
+    "rate": "B-19",
+    "service": "480Y/277V, 1,500 kVA, 2,000 A main",
+    "peak_kw": 433.7,
+    "target_kw": 300,
+    "peak_basis": "15-min interval",
+    "system_kw": 200,
+    "system_kwh": 400,
+    "system_status": "installed",
+    "stage": "06 Operate & optimize"
+   },
+   "location": {
+    "lat": 37.617673254229,
+    "lon": -122.082894613152
+   },
+   "utility_public": "Pacific Gas & Electric Company",
+   "seismic": "SDS 1.29 g \u00b7 SD1 1.13 g \u00b7 SDC D",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "463-0105-001-00",
+     "situs": "2348 INDUSTRIAL PKWY W",
+     "match": "nearby",
+     "distance_m": 5.1
+    },
+    {
+     "apn": "463-0105-007-00",
+     "situs": "HESPERIAN BLVD",
+     "match": "nearby",
+     "distance_m": 5.1
+    },
+    {
+     "apn": "463-0025-054-00",
+     "situs": "2365 INDUSTRIAL PKWY W",
+     "match": "nearby",
+     "distance_m": 28.0
+    }
+   ],
+   "warnings": [
+    "Inside a liquefaction zone of required investigation",
+    "Flood zone not retrieved",
+    "More than one zoning district near the point",
+    "No Hayward address point for 2448 Industrial",
+    "A building straddles APN 463-0025-036-00's lot line",
+    "No parcel carries house number 2448"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 8,
+     "provided": 2,
+     "confirm": 10,
+     "needed": 35
+    },
+    "required_done_pct": 18,
+    "required_auto_pct": 36,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 16
+     },
+     "EQORE": {
+      "confirm": 6,
+      "needed": 19
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 6,
+     "info": 10
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 11,
+     "review": 13,
+     "missing": 38
+    }
+   }
+  },
+  {
+   "slug": "380-littlefield-ave-south-san-francisco-ca",
+   "file": "records/380-littlefield-ave-south-san-francisco-ca.json",
+   "facility": "Pacific Coldline Logistics",
+   "address": "380 Littlefield Ave, South San Francisco, CA",
+   "state": "CA",
+   "county_fips": "06081",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Pacific Coldline Logistics",
+    "segment": "Refrigerated warehouse",
+    "utility": "PG&E",
+    "rate": "B-20",
+    "service": "480Y/277V, 2,500 kVA, 3,000 A main",
+    "peak_kw": 1180.6,
+    "target_kw": 900,
+    "peak_basis": "15-min interval",
+    "system_kw": 300,
+    "system_kwh": 1200,
+    "system_status": "contracted",
+    "stage": "04 Utility interconnection"
+   },
+   "location": {
+    "lat": 37.648750508453,
+    "lon": -122.394370030225
+   },
+   "utility_public": "Pacific Gas & Electric Company",
+   "seismic": "SDS 1.49 g \u00b7 SD1 1.62 g \u00b7 SDC E",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "015133230",
+     "situs": "380 LITTLEFIELD AVE, SOUTH SAN FRANCISCO",
+     "match": "situs_address",
+     "distance_m": 4.5
+    },
+    {
+     "apn": "015135090",
+     "situs": "329 LITTLEFIELD AVE, SOUTH SAN FRANCISCO",
+     "match": "nearby",
+     "distance_m": 14.1
+    },
+    {
+     "apn": "015133220",
+     "situs": "400 LITTLEFIELD AVE, SOUTH SAN FRANCISCO",
+     "match": "nearby",
+     "distance_m": 31.8
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 9,
+     "provided": 2,
+     "confirm": 8,
+     "needed": 36
+    },
+    "required_done_pct": 20,
+    "required_auto_pct": 35,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 20
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 1,
+     "info": 3
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 12,
+     "review": 11,
+     "missing": 38
+    }
+   }
+  },
+  {
+   "slug": "44800-fremont-blvd-fremont-ca",
+   "file": "records/44800-fremont-blvd-fremont-ca.json",
+   "facility": "Bayline Plastics",
+   "address": "44800 Fremont Blvd, Fremont, CA",
+   "state": "CA",
+   "county_fips": "06001",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Bayline Plastics",
+    "segment": "Injection molding",
+    "utility": "PG&E",
+    "rate": "B-19",
+    "service": "480Y/277V, 1,200 kVA, 1,600 A main",
+    "peak_kw": 655.8,
+    "target_kw": 500,
+    "peak_basis": "15-min interval",
+    "system_kw": 200,
+    "system_kwh": 400,
+    "system_status": "contracted"
+   },
+   "location": {
+    "lat": 37.502132826541,
+    "lon": -121.948777932643
+   },
+   "utility_public": "Pacific Gas & Electric Company",
+   "seismic": "SDS 1.45 g \u00b7 SD1 1.26 g \u00b7 SDC E",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "519-940-1-18",
+     "situs": "44800 FREMONT BLVD, FREMONT",
+     "match": "situs_address",
+     "distance_m": 79.7
+    },
+    {
+     "apn": "519-1754-348",
+     "situs": "44808 FREMONT BLVD, FREMONT",
+     "match": "nearby",
+     "distance_m": 2.4
+    },
+    {
+     "apn": "519-1754-341",
+     "situs": "44808 FREMONT BLVD UNIT 1000, FREMONT",
+     "match": "nearby",
+     "distance_m": 2.4
+    }
+   ],
+   "warnings": [
+    "Inside a liquefaction zone of required investigation",
+    "Flood zone not retrieved"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 8,
+     "provided": 2,
+     "confirm": 9,
+     "needed": 36
+    },
+    "required_done_pct": 18,
+    "required_auto_pct": 35,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 5,
+      "needed": 20
+     },
+     "Utility": {
+      "confirm": 1,
+      "needed": 1
+     }
+    },
+    "flags": {
+     "warn": 2,
+     "info": 3
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 11,
+     "review": 12,
+     "missing": 38
+    }
+   }
+  },
+  {
+   "slug": "120-lowland-st-holliston-ma",
+   "file": "records/120-lowland-st-holliston-ma.json",
+   "facility": "Charles River Provisions",
+   "address": "120 Lowland St, Holliston, MA",
+   "state": "MA",
+   "county_fips": "25017",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Charles River Provisions",
+    "segment": "Food processing",
+    "utility": "Eversource",
+    "rate": "G-2",
+    "service": "480Y/277V, 750 kVA, 1,200 A main",
+    "peak_kw": 318.2,
+    "target_kw": 240,
+    "peak_basis": "15-min interval",
+    "system_kw": 100,
+    "system_kwh": 400,
+    "system_status": "contracted",
+    "stage": "03 Design & permitting"
+   },
+   "location": {
+    "lat": 42.210113016067,
+    "lon": -71.413101783235
+   },
+   "utility_public": "NSTAR Electric d/b/a Eversource Energy",
+   "seismic": "SDS 0.18 g \u00b7 SD1 0.073 g \u00b7 SDC B",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "012.0-0004-0044.1",
+     "situs": "106 LOWLAND ST, Holliston",
+     "match": "nearby",
+     "distance_m": 1.6
+    },
+    {
+     "apn": "012.0-0004-0064.2",
+     "situs": "79 LOWLAND ST, Holliston",
+     "match": "nearby",
+     "distance_m": 12.7
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved",
+    "No parcel carries house number 120"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 4,
+     "provided": 2,
+     "confirm": 7,
+     "needed": 42
+    },
+    "required_done_pct": 11,
+    "required_auto_pct": 24,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 25
+     },
+     "Utility": {
+      "confirm": 0,
+      "needed": 2
+     }
+    },
+    "flags": {
+     "warn": 2,
+     "info": 1
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 10,
+     "missing": 44
+    }
+   }
+  },
+  {
+   "slug": "144-western-ave-lowell-ma",
+   "file": "records/144-western-ave-lowell-ma.json",
+   "facility": "Mill City Converting",
+   "address": "144 Western Ave, Lowell, MA",
+   "state": "MA",
+   "county_fips": "25017",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Mill City Converting",
+    "segment": "Paper converting",
+    "utility": "National Grid",
+    "rate": "G-3",
+    "service": "480Y/277V, 2,500 kVA, 3,000 A main",
+    "peak_kw": 1240.0,
+    "target_kw": 980,
+    "peak_basis": "15-min interval",
+    "system_kw": 300,
+    "system_kwh": 600,
+    "system_status": "indicative"
+   },
+   "location": {
+    "lat": 42.640108354702,
+    "lon": -71.319730695762
+   },
+   "utility_public": "Massachusetts Electric d/b/a National Grid",
+   "seismic": "SDS 0.24 g \u00b7 SD1 0.087 g \u00b7 SDC B",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "F_704641_3058195",
+     "situs": "122 WESTERN AVE #1, Lowell",
+     "match": "situs_address",
+     "distance_m": 2.9
+    },
+    {
+     "apn": "F_704078_3058447",
+     "situs": "393 WESTERN AVE, Lowell",
+     "match": "nearby",
+     "distance_m": 11.9
+    },
+    {
+     "apn": "F_704806_3058467",
+     "situs": "640 DUTTON ST, Lowell",
+     "match": "nearby",
+     "distance_m": 33.6
+    }
+   ],
+   "warnings": [
+    "Address matched more than one location",
+    "Flood zone not retrieved",
+    "Customer is probably not the owner"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 4,
+     "provided": 2,
+     "confirm": 11,
+     "needed": 38
+    },
+    "required_done_pct": 11,
+    "required_auto_pct": 31,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 11,
+      "needed": 14
+     },
+     "EQORE": {
+      "confirm": 5,
+      "needed": 22
+     },
+     "Utility": {
+      "confirm": 0,
+      "needed": 2
+     }
+    },
+    "flags": {
+     "warn": 3,
+     "info": 3
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 17,
+     "missing": 37
+    }
+   }
+  },
+  {
+   "slug": "16-commerce-way-woburn-ma",
+   "file": "records/16-commerce-way-woburn-ma.json",
+   "facility": "Merrimack Polymer Works",
+   "address": "16 Commerce Way, Woburn, MA",
+   "state": "MA",
+   "county_fips": "25017",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Merrimack Polymer Works",
+    "segment": "Injection molding",
+    "utility": "Eversource",
+    "rate": "G-2",
+    "service": "480Y/277V, 2,000 kVA, 2,500 A main",
+    "peak_kw": 890.4,
+    "target_kw": 690,
+    "peak_basis": "15-min interval",
+    "system_kw": 250,
+    "system_kwh": 600,
+    "system_status": "contracted",
+    "stage": "05 Installation & commissioning"
+   },
+   "location": {
+    "lat": 42.508002145087,
+    "lon": -71.131738901976
+   },
+   "utility_public": "NSTAR Electric d/b/a Eversource Energy",
+   "seismic": "SDS 0.22 g \u00b7 SD1 0.082 g \u00b7 SDC B",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "200103",
+     "situs": "20 COMMERCE WAY & 30, Woburn",
+     "match": "point_in_polygon",
+     "distance_m": 0.0
+    },
+    {
+     "apn": "210108",
+     "situs": "29 COMMERCE WAY, Woburn",
+     "match": "nearby",
+     "distance_m": 33.0
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved",
+    "No parcel carries house number 16"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 4,
+     "provided": 2,
+     "confirm": 7,
+     "needed": 42
+    },
+    "required_done_pct": 11,
+    "required_auto_pct": 24,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 25
+     },
+     "Utility": {
+      "confirm": 0,
+      "needed": 2
+     }
+    },
+    "flags": {
+     "warn": 2,
+     "info": 0
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 10,
+     "missing": 44
+    }
+   }
+  },
+  {
+   "slug": "275-cedar-hill-st-marlborough-ma",
+   "file": "records/275-cedar-hill-st-marlborough-ma.json",
+   "facility": "Assabet Metal Finishing",
+   "address": "275 Cedar Hill St, Marlborough, MA",
+   "state": "MA",
+   "county_fips": "25017",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Assabet Metal Finishing",
+    "segment": "Electroplating & anodizing",
+    "utility": "Eversource",
+    "rate": "G-2",
+    "service": "480Y/277V, 2,500 kVA, 3,000 A main",
+    "peak_kw": 1340.0,
+    "target_kw": 1040,
+    "peak_basis": "15-min interval",
+    "system_kw": 350,
+    "system_kwh": 800,
+    "system_status": "contracted",
+    "stage": "04 Utility interconnection"
+   },
+   "location": {
+    "lat": 42.3187169908,
+    "lon": -71.588010524213
+   },
+   "utility_public": "Massachusetts Electric d/b/a National Grid",
+   "seismic": "SDS 0.19 g \u00b7 SD1 0.075 g \u00b7 SDC B",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "115-1B",
+     "situs": "257 CEDAR HILL ST, Marlborough",
+     "match": "nearby",
+     "distance_m": 0.5
+    },
+    {
+     "apn": "115-7A",
+     "situs": "260 CEDAR HILL ST, Marlborough",
+     "match": "nearby",
+     "distance_m": 13.9
+    },
+    {
+     "apn": "115-3",
+     "situs": "249 CEDAR HILL ST, Marlborough",
+     "match": "nearby",
+     "distance_m": 15.7
+    }
+   ],
+   "warnings": [
+    "A building straddles parcel 115-1B's lot line",
+    "Flood zone not retrieved",
+    "No parcel carries house number 275",
+    "Facility list and public utility territory disagree"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 4,
+     "provided": 2,
+     "confirm": 7,
+     "needed": 42
+    },
+    "required_done_pct": 11,
+    "required_auto_pct": 24,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 25
+     },
+     "Utility": {
+      "confirm": 0,
+      "needed": 2
+     }
+    },
+    "flags": {
+     "warn": 4,
+     "info": 1
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 10,
+     "missing": 44
+    }
+   }
+  },
+  {
+   "slug": "60-manley-st-brockton-ma",
+   "file": "records/60-manley-st-brockton-ma.json",
+   "facility": "Old Colony Distribution",
+   "address": "60 Manley St, Brockton, MA",
+   "state": "MA",
+   "county_fips": "25023",
+   "status": "needs_confirmation",
+   "lead": {
+    "facility": "Old Colony Distribution",
+    "segment": "Distribution center",
+    "utility": "Eversource",
+    "rate": "G-2",
+    "service": "480Y/277V, 1,500 kVA, 2,000 A main",
+    "peak_kw": 702.0,
+    "target_kw": 560,
+    "peak_basis": "billed max",
+    "system_kw": 150,
+    "system_kwh": 600,
+    "system_status": "indicative"
+   },
+   "location": {
+    "lat": 42.062151330821,
+    "lon": -71.057191391402
+   },
+   "utility_public": "Massachusetts Electric d/b/a National Grid",
+   "seismic": "SDS 0.17 g \u00b7 SD1 0.07 g \u00b7 SDC B",
+   "flood_zone": "manual lookup (FEMA)",
+   "candidates": [
+    {
+     "apn": "019-031",
+     "situs": "940 BELMONT ST, Brockton",
+     "match": "point_in_polygon",
+     "distance_m": 0.0
+    },
+    {
+     "apn": "F_777348_2845480",
+     "situs": "(no situs), Brockton",
+     "match": "nearby",
+     "distance_m": 0.1
+    },
+    {
+     "apn": "009-188",
+     "situs": "35 MANLEY ST, Brockton",
+     "match": "nearby",
+     "distance_m": 15.6
+    }
+   ],
+   "warnings": [
+    "Flood zone not retrieved",
+    "No parcel carries house number 60",
+    "Facility list and public utility territory disagree"
+   ],
+   "summary": {
+    "required": 55,
+    "required_by_status": {
+     "filled": 4,
+     "provided": 2,
+     "confirm": 7,
+     "needed": 42
+    },
+    "required_done_pct": 11,
+    "required_auto_pct": 24,
+    "to_collect_by_who": {
+     "Customer": {
+      "confirm": 3,
+      "needed": 15
+     },
+     "EQORE": {
+      "confirm": 4,
+      "needed": 25
+     },
+     "Utility": {
+      "confirm": 0,
+      "needed": 2
+     }
+    },
+    "flags": {
+     "warn": 3,
+     "info": 0
+    },
+    "source_errors": 0,
+    "prefill": {
+     "filled": 7,
+     "review": 10,
+     "missing": 44
+    }
+   }
+  }
+ ]
+}

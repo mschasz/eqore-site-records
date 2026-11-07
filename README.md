@@ -61,3 +61,7 @@ Rate schedule, ownership, service size and existing solar or storage are not in 
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m permits fetch "2457 Industrial Pkwy W, Hayward, CA 94545"
 ```
+
+## Site records data (`site_records/`)
+
+Address-level site records built from public, keyless sources (Census, MassGIS, LightBox statewide parcels, DataSF, City of Hayward GIS, CAL FIRE, CGS, USGS, CEC, PG&E GRIP). One JSON per facility plus `index.json` and a `records.js` bundle the site can load directly. Every value carries its source, vintage and confidence; parcels are never auto-selected. Add an address from the Actions tab (*Site records* → Run workflow) or edit `site_records/facilities.json`. See [site_records/README.md](site_records/README.md). Generator: `eqore_site/` (`python -m eqore_site.export`).
