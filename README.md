@@ -1,10 +1,10 @@
-# EQORE Site Records
+# EQORE Site Evaluation
 
-Internal site-record app for EQORE's behind-the-meter C&I battery projects in California and Massachusetts. One record per facility, organized around EQORE's six delivery steps (savings assessment → operate & optimize), with every value traced to its source.
+A tool for EQORE engineers to judge whether a commercial or industrial site is ready for the next step toward a battery installation. Each site page combines what public records establish about the location with what the customer has provided. It shows what is known, what is risky, and what to ask for next.
 
 ## Run
 
-Static files, no build step. Serve the folder and open it:
+Static files, no build step:
 
 ```bash
 python3 -m http.server 5173
@@ -12,26 +12,41 @@ python3 -m http.server 5173
 
 Then open http://localhost:5173.
 
-## What's in a site record
+## Leads
 
-- **Design readiness** (0–100) across four sections: electrical service & tie-in, interval data & tariff, equipment location & fire code, permits & interconnection. Each data point shows its source, method, confidence and who confirmed it.
-- **Tie-in check**: NEC 705.12 120% rule against existing PV and BESS inverter current, fault duty vs. SCCR, GFPE, and the tie-in method (705.11 / 705.12 / 705.13).
-- **Load & sizing**: modeled 15-min shape anchored to the metered peak, priced through the tariff's TOU demand windows, plus value streams (ConnectedSolutions, Clean Peak, SGIP, TOU shifting, capacity tag) and a payback calculator.
-- **Mobilization & commissioning** items from step 04.
-- **Documents & approvals** register (permit plan set, approvals, NFPA 855 records). Completing a document requires an evidence file and a sign-off; prerequisites are enforced.
-- **Stage gates** for each step transition.
-- **Facility requests** by SMS/email upload link.
-- **Public responder page** (`#/responder/<id>`) behind the site QR placard, published from step 05.
+Five San Francisco candidates (PG&E territory), found by screening DataSF energy benchmarking for refrigerated-warehouse and manufacturing buildings and then reviewing each parcel's permit history:
+
+| Site | APN | Type |
+|---|---|---|
+| 888 Tennessee St | 4060/001 | Refrigerated warehouse |
+| 1600 Donner Ave (Envision Cold) | 4881/023 | Refrigerated warehouse |
+| 2050 Galvez Ave (Growers' Refrigeration) | 5246/052 | Refrigerated warehouse |
+| 1401 Yosemite Ave (Molinari Salame) | 4847/024 | Manufacturing |
+| 1950–2190 Cesar Chavez St | 4324/002 | Multi-tenant industrial |
+
+Rate schedule, ownership, service size and existing solar or storage are not in public records. They have to come from the customer.
+
+## Site page
+
+- **Readiness snapshot:** five areas (electrical service, load & rate, equipment location, permits & AHJ, utility & interconnection). Each is marked Confirmed / Partial / Unknown / Risk with a one-line reason. Customer evidence or an engineer's assessment upgrades a status, and the tile shows where its status came from.
+- **Findings from records:** risks, supporting facts and notes, each citing its permit or benchmarking record. Engineers mark findings as reviewed.
+- **Needed from the customer:** bills, Green Button interval data, SLD, switchgear and meter photos, equipment-area photos and a facility questionnaire. Upload in place, or draft the request text.
+- **Tabs:**
+  - Electrical: permits filtered and tagged by rating and equipment, plus an NEC 705.12 / 705.13 / 705.11 tie-in check and fault duty vs. SCCR from engineer inputs.
+  - Load & rate: benchmarking history, a peak estimate, and Green Button CSV parsing in the browser (peak, timing, load factor, monthly peaks).
+  - Equipment location: aerial imagery with a distance-measuring tool and siting criteria.
+  - Permit records: full history, filterable, with live refresh from DataSF.
+  - Customer documents and SF requirements.
 
 ## Data
 
-- `assets/reference.js`: public reference data gathered 2026-11-07, including PG&E B-19/B-20, Eversource G-2/G-3 and National Grid G-3 demand rates and windows; PG&E Rule 21, National Grid SIDG No. 1632 and Eversource SIDG No. 55F; ConnectedSolutions (June 2023 offering), Clean Peak (225 CMR 21.05) and SGIP status; NFPA/ICC/MA/CA code references; NREL ComStock warehouse load shapes; and AHJ permit portals.
-- `assets/data.js`: seed facilities. ThermoFusion's system (200 kW / 400 kWh QorePack) and July 2026 performance are from eqore.com; all other facilities, people and numbers are fictional demo data.
-- Edits are saved in the browser's localStorage. Use **Reset demo data** in the account menu to return to the seed.
+- `assets/sf_records.js`: DataSF snapshot (2026-11-07) of Building Permits (i98e-djp9), Electrical Permits (ftty-kx6y) and the Existing Commercial Buildings Energy Performance report (96ck-qcfe). Permits can be refreshed live from the Permit records tab.
+- `assets/data.js`: sites, findings and the customer document checklist. Findings are written from those records.
+- `assets/reference.js`: public reference data (PG&E Rule 21, tariffs, codes).
+- Reviews, inputs, uploads and measurements are stored in the browser's localStorage. Use the account menu to clear them.
 
-## Known limits
+## Limits
 
-- Load shapes are modeled and calibrated to the recorded peak; uploaded interval files are not parsed yet.
-- The ConnectedSolutions rate comes from the June 2023 C&I offering. Confirm 2025–2027 rates before quoting.
-- NFPA 855 section numbers follow EQORE's document checklist. Cite the edition each AHJ has adopted.
-- The responder page uses EQORE's main line. Replace it with the 24/7 operations number before posting placards.
+- Peak demand is an estimate from annual kWh and typical load factors until interval data is uploaded.
+- Uploaded PDFs and photos are stored and previewed, but not read automatically. Engineers enter ratings in the Electrical tab.
+- The Green Button parser handles PG&E CSV exports (TYPE, DATE, START TIME, USAGE) and simple timestamp + kW/kWh files. It does not read ESPI XML.
