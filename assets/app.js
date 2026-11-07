@@ -662,23 +662,20 @@
 
       <section class="panel" id="site-requests"></section>
 
-      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border-l border-t border-line bg-white" id="snapshot"></section>
+      <section class="space-y-6" id="site-matrix"></section>
 
       <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div class="xl:col-span-8 panel" id="findings"></div>
         <aside class="xl:col-span-4 space-y-6">${panelFold('site-activity', 'Activity', `${s.activity.length} entries`)}</aside>
       </section>
 
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border-l border-t border-line bg-white" id="snapshot"></section>
+
       <section class="panel" id="site-timeline"></section>
 
-      ${panelFold('site-addr', 'Address lookup', (() => { const d = EQ.addrDoc(s); return d ? `${d.record.summary.required_done_pct}% of required items from public data · ${d.record.sources.length} sources` : 'Not built yet'; })())}
-
-      <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        <div class="xl:col-span-8 space-y-6" id="site-matrix"></div>
-        <aside class="xl:col-span-4 space-y-6 xl:sticky xl:top-[124px]">${panelFold('site-codes', 'AHJ, codes & utility', 'Reference links')}</aside>
-      </section>
-
       <div class="eyebrow pt-2">Reference</div>
+      ${panelFold('site-addr', 'Address lookup', (() => { const d = EQ.addrDoc(s); return d ? `${d.record.summary.required_done_pct}% of required items from public data · ${d.record.sources.length} sources` : 'Not built yet'; })())}
+      ${panelFold('site-codes', 'AHJ, codes & utility', 'Reference links')}
       ${panelFold('site-permits', 'Permit records', s.sf ? `${rec(s).permits.length} permits on record` : 'From the address lookup')}
       ${panelFold('site-docs', 'Documents & approvals', `${s.docs.filter((d) => d.status === 'complete').length}/${s.docs.filter((d) => d.status !== 'na').length} complete`)}
       ${panelFold('site-vault', 'Files', `${s.files.length} file${s.files.length === 1 ? '' : 's'}`)}
@@ -1054,7 +1051,10 @@
     return `<details class="fold-in border-t border-line2" data-fold="${key}" ${(S.folds || {})[key] ? 'open' : ''}><summary class="flex items-baseline gap-3 px-5 py-3 cursor-pointer select-none hover:bg-paper"><span class="chev"></span><span class="text-[13px] ${muted ? 'text-mute' : 'text-ink'}">${title}</span><span class="text-[11.5px] text-mute">${sub}</span></summary>${body}</details>`;
   }
   function renderMatrix(s) {
-    $('#site-matrix').innerHTML = EQ.SECTIONS.map((p) => `
+    const sc = Object.fromEntries(sectionScores(s).map((p) => [p.key, p]));
+    const rank = (k) => { const p = sc[k]; return !p.dps.length ? 2 : p.done < p.dps.length ? 0 : 1; };
+    const order = EQ.SECTIONS.slice().sort((a, b) => rank(a.key) - rank(b.key));
+    $('#site-matrix').innerHTML = order.map((p) => `
       <article class="panel scroll-mt-32" id="section-${p.key}">
         <header class="panel-head" id="section-head-${p.key}"></header>
         <div id="section-body-${p.key}"></div>
