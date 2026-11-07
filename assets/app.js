@@ -523,6 +523,52 @@
     if (R.satThumb) { R.satThumb.remove(); R.satThumb = null; }
   }
   /* Header facts: SF leads from DataSF; other sites from the facility list and the address lookup. */
+  // Three facts an engineer needs at a glance; the rest are under Site details.
+  function keyFacts(s, l, r) {
+    const all = headerFacts(s, l, r), pick = (k) => all.find((x) => x[0] === k);
+    const eng = EQ.TEAM[s.eng];
+    return [pick('Utility'), pick('Peak demand') || pick('Grid use'), pick('Fire authority') || pick('AHJ'), ['EQORE engineer', eng ? eng.name : '—', null]].filter(Boolean);
+  }
+  const mainContact = (s) => (s.contacts || []).find((c) => c.id === 'fm') || null;
+  const contactKnown = (c) => !!(c && c.name && !/^(Not yet identified|Facility contact)$/.test(c.name));
+  function contactLine(s) {
+    const c = mainContact(s);
+    if (!contactKnown(c)) return `<div class="flex flex-wrap items-baseline gap-x-2 mt-2 text-[12.5px]"><span class="text-mute">Main contact</span><button class="link" data-action="contact-main">Add the facility contact</button></div>`;
+    const digits = (c.phone || '').replace(/[^0-9+]/g, '');
+    return `<div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 mt-2 text-[12.5px]"><span class="text-mute">Main contact</span>
+      <button class="text-ink font-medium underline decoration-line underline-offset-2 hover:text-blue" data-action="contact-main">${esc(c.name)}</button>${c.title ? `<span class="text-ink2">${esc(String(c.title).split(' · ')[0])}</span>` : ''}
+      <span class="flex gap-1.5">${c.email ? `<a class="stamp hover:border-ink" href="${esc(mailtoFor(s, c))}">Email</a>` : ''}${digits ? `<a class="stamp hover:border-ink" href="${esc(smsFor(s, c))}">Text</a><a class="stamp hover:border-ink" href="tel:${esc(digits)}">Call</a>` : ''}</span></div>`;
+  }
+  const firstName = (c) => String(c.name || '').split(/\s+/)[0];
+  const mailtoFor = (s, c) => `mailto:${c.email}?subject=${encodeURIComponent(`EQORE battery storage at ${s.address}`)}&body=${encodeURIComponent(`Hi ${firstName(c)},\n\n`)}`;
+  const smsFor = (s, c) => `sms:${(c.phone || '').replace(/[^0-9+]/g, '')}?&body=${encodeURIComponent(`Hi ${firstName(c)}, this is ${EQ.TEAM[s.eng].name.split(',')[0]} with EQORE about battery storage at ${s.address}. `)}`;
+  function openContactModal(s, edit) {
+    const c = mainContact(s) || {}, known = contactKnown(c);
+    if (known && !edit) {
+      const digits = (c.phone || '').replace(/[^0-9+]/g, '');
+      openModal({ title: esc(c.name), subtitle: `Main contact · ${esc(s.name)}`, size: 'max-w-md',
+        body: `<dl class="border border-line text-[13px]">${[['Role', String(c.title || '').split(' · ')[0] || '—'], ['Email', c.email || '—'], ['Phone', c.phone || '—'], ['Last contact', c.last || '—']].map(([k, v]) => `<div class="flex justify-between gap-4 px-4 py-2.5 border-t border-line2 first:border-t-0"><dt class="text-mute">${k}</dt><dd class="text-ink text-right break-all">${esc(v)}</dd></div>`).join('')}</dl>
+          <div class="grid grid-cols-3 gap-2 mt-4">
+            ${c.email ? `<a class="btn btn-primary justify-center" href="${esc(mailtoFor(s, c))}">Email</a>` : '<span class="btn btn-secondary justify-center opacity-40">No email</span>'}
+            ${digits ? `<a class="btn btn-primary justify-center" href="${esc(smsFor(s, c))}">Text</a><a class="btn btn-secondary justify-center" href="tel:${esc(digits)}">Call</a>` : '<span class="btn btn-secondary justify-center opacity-40 col-span-2">No phone</span>'}
+          </div>`,
+        footer: `<button class="btn btn-ghost" data-action="contact-edit">Edit</button><button class="btn btn-secondary" data-action="close-modal">Close</button>` });
+      return;
+    }
+    const f = (id, label, v, type = 'text', ac = '') => `<label class="block text-[12px] text-mute mt-3 first:mt-0" for="${id}">${label}</label><input id="${id}" type="${type}" autocomplete="${ac}" class="field w-full h-10 px-3 text-[14px] mt-1" value="${esc(v || '')}" />`;
+    openModal({ title: known ? 'Edit main contact' : 'Add the facility contact', subtitle: esc(s.name), size: 'max-w-md',
+      body: f('mc-name', 'Name', known ? c.name : '', 'text', 'name') + f('mc-role', 'Role', known ? String(c.title || '').split(' · ')[0] : '', 'text', 'organization-title') + f('mc-email', 'Email', c.email, 'email', 'email') + f('mc-phone', 'Mobile', c.phone, 'tel', 'tel'),
+      footer: `<button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="contact-save">Save</button>`,
+      onMount: (root) => setTimeout(() => $('#mc-name', root).focus(), 30) });
+  }
+  function saveContact(s) {
+    const v = (id) => $(`#${id}`).value.trim(), name = v('mc-name');
+    if (!name) { $('#mc-name').focus(); return; }
+    const c = mainContact(s); const role = v('mc-role'), email = v('mc-email'), phone = v('mc-phone');
+    Object.assign(c, { name, title: role, email, phone });
+    s.fm = { name, title: role, email, phone };
+    log(s, `Main contact set: ${name}`); closeModal(); persist(); renderSite(s); toast(`Saved: ${esc(name)}`);
+  }
   function headerFacts(s, l, r) {
     if (s.sf) return [['Floor area', `${fmt(s.floorArea)} sf`, 'Benchmarking'], ['Built · stories', `${s.yearBuilt || '—'} · ${s.stories}`, 'Benchmarking'], ['Occupancy', s.occupancy, 'Permit history'], ['Grid use', l ? `${fmt(l.kwh / 1e6, 2)} GWh (${l.year})` : '—', l ? `Benchmarking ${l.year}` : null],
       ['Utility', 'PG&E · rate unknown', EQ.addrSrc('f_util')], ['County', 'San Francisco, CA', null], ['AHJ', 'SF DBI · SFFD', EQ.addrSrc('d_fire')], ['Records', `${r.permits.length} permits · ${r.benchmark.length} yrs benchmarking`, 'Permit history']];
@@ -543,26 +589,26 @@
       <a href="#/" class="arrow-link text-ink2 text-[13px]">← Projects</a>
       <section class="panel">
         <div class="grid grid-cols-1 lg:grid-cols-12">
-          <div class="lg:col-span-8 p-6 flex flex-col sm:flex-row gap-6 border-b lg:border-b-0 lg:border-r border-line2">
-            <button class="sat-thumb relative w-full sm:w-52 h-44 sm:h-auto sm:min-h-[200px] overflow-hidden border border-line shrink-0" data-action="open-satellite" aria-label="Open aerial view">
+          <div class="lg:col-span-8 p-5 flex flex-col sm:flex-row gap-5 border-b lg:border-b-0 lg:border-r border-line2">
+            <button class="sat-thumb relative w-full sm:w-64 h-36 sm:h-32 overflow-hidden border border-line shrink-0" data-action="open-satellite" aria-label="Open aerial view">
               <div id="sat-thumb" class="absolute inset-0"></div>
-              <span class="absolute left-0 bottom-0 z-[500] bg-white/95 px-2 py-1 text-[10.5px] text-ink2 num">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
+              <span class="absolute left-0 bottom-0 z-[500] bg-white/95 px-2 py-0.5 text-[10.5px] text-ink2 num">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
             </button>
             <div class="min-w-0 flex-1">
-              <div class="eyebrow">${esc(s.sector)} · ${esc(s.neighborhood)}</div>
-              <h1 class="display text-[32px] leading-tight mt-1.5">${esc(s.name)}</h1>
-              <p class="text-[13.5px] text-ink2 mt-1">${esc(s.address)}, ${esc(s.city)}, ${s.state} ${s.zip}${s.apn ? ` · APN ${esc(s.apn)}${s.apnCandidate ? ' <button class="link text-[12px]" data-action="source" data-src="Address lookup (b_apn)" data-title="APN candidates">(candidate, unconfirmed)</button>' : ''}` : ''}${r.pim ? ` · ${extLink(r.pim, 'SF Planning PIM')}` : ''}</p>
-              <p class="text-[12.5px] text-mute">${esc(s.tenant)}</p>
-              <dl class="grid grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-3 mt-4 text-[13px]">
-                ${headerFacts(s, l, r)
-                  .map(([k, v, src]) => `<div><dt class="text-[11.5px] text-mute">${k}</dt><dd class="text-ink mt-0.5">${src ? `<button class="text-left hover:text-blue underline decoration-line underline-offset-2" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${esc(v)}</button>` : esc(v)}</dd></div>`).join('')}
+              <div class="eyebrow">${esc(s.sector)}${s.neighborhood ? ' · ' + esc(s.neighborhood) : ''}</div>
+              <h1 class="display text-[28px] leading-tight mt-1">${esc(s.name)}</h1>
+              <p class="text-[13px] text-ink2 mt-0.5">${esc(s.address)}, ${esc(s.city)}, ${s.state} ${s.zip}${s.apn ? ` · APN ${esc(s.apn)}${s.apnCandidate ? ' <button class="link text-[12px]" data-action="source" data-src="Address lookup (b_apn)" data-title="APN candidates">(candidate)</button>' : ''}` : ''}</p>
+              ${contactLine(s)}
+              <dl class="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-[12.5px]">
+                ${keyFacts(s, l, r).map(([k, v, src]) => `<div class="min-w-0"><dt class="text-[11px] text-mute">${k}</dt><dd class="text-ink truncate max-w-[220px]">${src ? `<button class="text-left hover:text-blue underline decoration-line underline-offset-2" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${esc(v)}</button>` : esc(v)}</dd></div>`).join('')}
               </dl>
-              <p class="text-[14px] text-ink mt-4">${esc(s.summary)}</p>
             </div>
           </div>
           <div class="lg:col-span-4 p-6" id="site-score"></div>
         </div>
-        <div class="px-6 pb-6 pt-1" id="site-intake">${intakeHTML(s)}</div>
+        <div class="px-6 pb-5 pt-1" id="site-intake">${intakeHTML(s)}</div>
+        ${fold('site-details', 'Site details', 'Size, zoning, seismic, county, records and summary', `<div class="px-5 pb-5 pt-1"><dl class="grid grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-3 text-[13px]">${headerFacts(s, l, r).map(([k, v, src]) => `<div><dt class="text-[11.5px] text-mute">${k}</dt><dd class="text-ink mt-0.5">${src ? `<button class="text-left hover:text-blue underline decoration-line underline-offset-2" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${esc(v)}</button>` : esc(v)}</dd></div>`).join('')}</dl>
+          <p class="text-[12.5px] text-mute mt-4">${esc(s.tenant)}</p><p class="text-[13.5px] text-ink mt-1">${esc(s.summary)}</p>${r.pim ? `<p class="text-[12.5px] mt-2">${extLink(r.pim, 'SF Planning PIM')}</p>` : ''}</div>`)}
       </section>
 
       <section class="panel" id="site-requests"></section>
@@ -1515,6 +1561,9 @@
         break;
       }
       case 'addr-section': if (s) { S.addrSection = S.addrSection === el.dataset.sec || (S.addrSection == null && el.dataset.sec === [...new Set(EQ.addrDoc(s).record.fields.map((f) => f.section))][0]) ? '' : el.dataset.sec; renderAddr(s); } break;
+      case 'contact-main': if (s) { e.stopPropagation(); openContactModal(s, false); } break;
+      case 'contact-edit': if (s) { closeModal(); openContactModal(s, true); } break;
+      case 'contact-save': if (s) saveContact(s); break;
       case 'what-to-do': {
         e.stopPropagation(); closeModal();
         if (s) openActionModal(s, el.dataset.dp);
