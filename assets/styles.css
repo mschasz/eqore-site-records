@@ -180,3 +180,12 @@ input[type="range"].eq-range::-moz-range-thumb { width: 12px; height: 12px; bord
 .dp-row.is-optional { opacity: .55; }
 .dp-row.is-optional:hover { opacity: 1; }
 .dp-row.is-optional.is-gap, .dp-row.is-optional.is-critical { box-shadow: inset 2px 0 0 var(--line); }
+
+/* Collapsible, closed-by-default dropdowns for data that isn't the next step */
+details[data-fold] > summary { list-style: none; }
+details[data-fold] > summary::-webkit-details-marker { display: none; }
+details[data-fold] .chev { width: 8px; height: 8px; border-right: 1.5px solid var(--mute); border-bottom: 1.5px solid var(--mute); transform: rotate(-45deg); transition: transform .15s; flex: none; align-self: center; }
+details[data-fold][open] > summary .chev { transform: rotate(45deg); }
+.fold-body { border-top: 1px solid var(--line2); }
+.fold-body > .panel-head > h3.h-section:first-child, .fold-body > .panel-head > .eyebrow.flex-1:first-child { display: none; }
+.fold-body > div:first-child > h3.h-section { display: none; }

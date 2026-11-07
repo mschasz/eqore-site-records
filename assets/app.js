@@ -82,8 +82,11 @@
   function intakeIdx(s) {
     if (s.stage && s.stage !== 'intake') return EQ.INTAKE.length; // past intake: all four steps done
     // 04 is complete (index 4 = all four steps done) once every required facility input is in.
-    const fromData = hasCustomerData(s) ? (openBy(s, 'fm').length ? 2 : 4) : -1;
-    return Math.max(s.intake ?? 0, fromData);
+    // Progress follows the data only; nobody sets it by hand.
+    //  01 done when the lead came in through the lead form or the facility list.
+    //  01-02 done (03 current) as soon as the customer has sent data; all four done once the required facility inputs are in.
+    if (hasCustomerData(s)) return openBy(s, 'fm').length ? 2 : 4;
+    return s.fromLead || s.fromList ? 1 : 0;
   }
   function nextAction(s) {
     const i = intakeIdx(s), fm = openBy(s, 'fm').length, ut = openBy(s, 'utility').length;
@@ -344,13 +347,15 @@
   }
   function intakeHTML(s) {
     const cur = intakeIdx(s), a = nextAction(s);
-    return `<div class="tracker">${EQ.INTAKE.map((t, i) => `<button class="text-left ${i < cur ? 'done' : i === cur ? 'cur' : ''}" data-action="set-intake" data-i="${i}" title="${t.auto ? 'Moves automatically when the facility sends data' : i < 2 && hasCustomerData(s) ? 'Completed: the facility has sent data' : 'Click to set'}"><div class="n num">${t.n}${i < cur ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div><div class="l">${esc(t.label)}</div></button>`).join('')}</div>
-      <div class="text-[12px] text-ink2 mt-3">${s.stage !== 'intake' ? `Intake complete · now in <span class="text-ink">${esc(EQ.STAGES[s.stage].label)}</span> · ` : ''}Next: <span class="text-ink">${esc(a.text)}</span>${a.more.length ? ` · ${esc(a.more.join(' · '))}` : ''}</div>`;
+    return `<div class="tracker" role="list" aria-label="Intake progress, set by the data on file">${EQ.INTAKE.map((t, i) => `<div role="listitem" class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="n num">${t.n}${i < cur ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div><div class="l">${esc(t.label)}</div></div>`).join('')}</div>
+      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-3 text-[12px] text-ink2"><span>${s.stage !== 'intake' ? `Intake complete · now in <span class="text-ink">${esc(EQ.STAGES[s.stage].label)}</span> · ` : ''}Next: <span class="text-ink">${esc(a.text)}</span>${a.more.length ? ` · ${esc(a.more.join(' · '))}` : ''}</span>
+        ${reqOpen(s).length ? `<button class="btn btn-secondary btn-xs" data-action="next-steps">What to do next<span>→</span></button>` : ''}<span class="text-[11px] text-mute ml-auto">Progress follows the data on file.</span></div>`;
   }
   function actionCell(s) {
     const a = nextAction(s), st = EQ.INTAKE[intakeIdx(s)];
     return `<div class="text-[13px] ${a.done ? 'text-steel' : 'text-ink'}">${esc(a.text)}</div>
       ${a.more.length ? `<div class="text-[11.5px] text-ink2">${esc(a.more.join(' · '))}</div>` : ''}
+      ${reqOpen(s).length ? `<button class="btn btn-secondary btn-xs mt-1.5" data-action="next-steps" data-id="${s.id}" data-stop>What to do next</button>` : ''}
       <div class="text-[11.5px] text-mute mt-0.5">${st ? `<span class="num">${st.n}</span> ${esc(st.label)}` : s.stage === 'intake' ? '<span class="num">04</span> Site data collection completed' : `Delivery · ${esc(EQ.STAGES[s.stage].label)}`}</div>`;
   }
   function rowHTML(s) {
@@ -509,6 +514,9 @@
       ['Utility', `${s.utility}${s.tariff ? ' · ' + s.tariff.replace(s.utility + ' ', '') : ' · rate unknown'}`, EQ.addrSrc('f_util')], ['County', `${s.county}, ${s.state}`, EQ.addrSrc('a_cnty')],
       ['Fire authority', sh('d_fire', 36), EQ.addrSrc('d_fire')], ['Address lookup', sum ? `${sum.required_done_pct}% of required items filled` : 'Not built yet', 'Address lookup']];
   }
+  function panelFold(id, title, meta) {
+    return `<details class="panel fold" data-fold="${id}" ${(S.folds || {})[id] ? 'open' : ''}><summary class="flex items-baseline gap-3 px-5 py-4 cursor-pointer select-none hover:bg-paper"><span class="chev"></span><span class="h-section !text-[19px] flex-1">${title}</span><span class="text-[12px] text-mute">${esc(meta || '')}</span></summary><div id="${id}" class="fold-body"></div></details>`;
+  }
   function renderSite(s) {
     destroySiteWidgets();
     const cur = stageIdx(s), l = latestKwh(s), r = rec(s);
@@ -542,20 +550,21 @@
 
       <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div class="xl:col-span-8 panel" id="findings"></div>
-        <aside class="xl:col-span-4 space-y-6"><div class="panel" id="site-requests"></div><div class="panel" id="site-activity"></div></aside>
+        <aside class="xl:col-span-4 space-y-6"><div class="panel" id="site-requests"></div>${panelFold('site-activity', 'Activity', `${s.activity.length} entries`)}</aside>
       </section>
 
-      <section class="panel" id="site-addr"></section>
+      ${panelFold('site-addr', 'Address lookup', (() => { const d = EQ.addrDoc(s); return d ? `${d.record.summary.required_done_pct}% of required items from public data · ${d.record.sources.length} sources` : 'Not built yet'; })())}
 
       <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div class="xl:col-span-8 space-y-6" id="site-matrix"></div>
-        <aside class="xl:col-span-4 space-y-6 xl:sticky xl:top-[124px]"><div class="panel" id="site-codes"></div></aside>
+        <aside class="xl:col-span-4 space-y-6 xl:sticky xl:top-[124px]">${panelFold('site-codes', 'AHJ, codes & utility', 'Reference links')}</aside>
       </section>
 
-      <section class="panel" id="site-permits"></section>
-      <section class="panel" id="site-docs"></section>
-      <section class="panel" id="site-vault"></section>
-      <section id="site-pocs"></section>`;
+      <div class="eyebrow pt-2">Reference</div>
+      ${panelFold('site-permits', 'Permit records', s.sf ? `${rec(s).permits.length} permits on record` : 'From the address lookup')}
+      ${panelFold('site-docs', 'Documents & approvals', `${s.docs.filter((d) => d.status === 'complete').length}/${s.docs.filter((d) => d.status !== 'na').length} complete`)}
+      ${panelFold('site-vault', 'Files', `${s.files.length} file${s.files.length === 1 ? '' : 's'}`)}
+      ${panelFold('site-pocs', 'Contacts', `${s.contacts.length} contacts`)}`;
     renderScore(s); renderSnapshot(s); renderFindings(s); renderMatrix(s); renderRequests(s); renderActivity(s); renderPermits(s); renderDocs(s); renderCodes(s); renderVault(s); renderPocs(s); renderAddr(s);
     icons(); initSatThumb(s); renderLoad(s);
   }
@@ -599,11 +608,14 @@
     const items = s.findings.map((f, i) => ({ f, i })).sort((a, b) => order[a.f.sev] - order[b.f.sev]);
     const open = s.findings.filter((f, i) => f.sev === 'risk' && !(s.reviewed || {})[i]).length;
     $('#findings').innerHTML = `<div class="panel-head"><div class="eyebrow flex-1">Findings from records</div><span class="text-[12px] ${open ? 'text-alert' : 'text-mute'}">${open} open risk${open === 1 ? '' : 's'}</span></div>
-      <ul>${items.map(({ f, i }) => { const rv = (s.reviewed || {})[i]; return `<li class="grid grid-cols-[76px_1fr_auto] gap-3 px-5 py-3 border-t border-line2 first:border-t-0 ${rv ? 'opacity-55' : ''}">
+      ${(() => { const li = ({ f, i }) => { const rv = (s.reviewed || {})[i]; return `<li class="grid grid-cols-[76px_1fr_auto] gap-3 px-5 py-3 border-t border-line2 first:border-t-0 ${rv ? 'opacity-55' : ''}">
         <span class="pt-0.5">${tag(mark[f.sev][0], mark[f.sev][1])}</span>
         <div class="min-w-0"><button class="text-left text-[13.5px] text-ink leading-snug hover:text-blue" data-action="source" data-src="${esc(f.src)}" data-title="${esc(f.text)}">${esc(f.text)}</button>
           <div class="text-[11.5px] text-mute mt-1"><button class="underline decoration-line underline-offset-2 hover:text-ink" data-action="source" data-src="${esc(f.src)}" data-title="${esc(f.text)}">${esc(f.src)}</button> · ${esc(EQ.AREAS.find((a) => a.key === f.area).name)}</div></div>
-        <label class="flex items-center gap-1.5 text-[11.5px] text-ink2 cursor-pointer pt-0.5"><input type="checkbox" class="w-3.5 h-3.5 accent-[#06162b]" data-review="${i}" ${rv ? 'checked' : ''} />Reviewed</label></li>`; }).join('')}</ul>`;
+        <label class="flex items-center gap-1.5 text-[11.5px] text-ink2 cursor-pointer pt-0.5"><input type="checkbox" class="w-3.5 h-3.5 accent-[#06162b]" data-review="${i}" ${rv ? 'checked' : ''} />Reviewed</label></li>`; };
+        const act = items.filter(({ f, i }) => f.sev === 'risk' && !(s.reviewed || {})[i]), rest = items.filter((x) => !act.includes(x));
+        return (act.length ? `<ul>${act.map(li).join('')}</ul>` : '<div class="px-5 py-4 text-[13px] text-steel">No open risks.</div>')
+          + (rest.length ? fold('findings-rest', `Other findings · ${rest.length}`, 'Supporting facts, notes and reviewed risks', `<ul>${rest.map(li).join('')}</ul>`) : ''); })()}`;
   }
   function openArea(s, key) {
     const a = EQ.AREAS.find((x) => x.key === key), x = areaStatus(s, key), o = (s.overrides || {})[key] || {};
@@ -919,13 +931,17 @@
   }
 
   /* ----------------------------------------------------- sections */
+  // A closed-by-default dropdown that remembers whether it was opened.
+  function fold(key, title, sub, body, muted) {
+    return `<details class="fold-in border-t border-line2" data-fold="${key}" ${(S.folds || {})[key] ? 'open' : ''}><summary class="flex items-baseline gap-3 px-5 py-3 cursor-pointer select-none hover:bg-paper"><span class="chev"></span><span class="text-[13px] ${muted ? 'text-mute' : 'text-ink'}">${title}</span><span class="text-[11.5px] text-mute">${sub}</span></summary>${body}</details>`;
+  }
   function renderMatrix(s) {
     $('#site-matrix').innerHTML = EQ.SECTIONS.map((p) => `
       <article class="panel scroll-mt-32" id="section-${p.key}">
         <header class="panel-head" id="section-head-${p.key}"></header>
         <div id="section-body-${p.key}"></div>
-        ${p.key === 'elec' ? '<div class="border-t border-line2" id="tiein"></div>' : ''}
-        ${p.key === 'load' ? '<div class="border-t border-line2 p-5" id="load-panel"></div>' : ''}
+        ${p.key === 'elec' ? fold('tiein', 'Tie-in check', 'Calculator: 120% rule, fault duty, GFPE', '<div id="tiein"></div>') : ''}
+        ${p.key === 'load' ? fold('load', s.interval ? 'Load data, charts and peak-shaving model' : 'Load data and charts', s.shave ? `Modeled demand savings $${fmt(Math.round(s.shave.total / 100) * 100)}/yr` : 'Benchmarking, interval data, bill demand', '<div class="p-5" id="load-panel"></div>') : ''}
       </article>`).join('') + `
       <article class="panel scroll-mt-32" id="section-field"><header class="panel-head" id="section-head-field"></header><div id="section-body-field"></div></article>`;
     EQ.SECTIONS.forEach((p) => renderSectionBody(s, p.key));
@@ -970,8 +986,86 @@
       <h3 class="h-section flex-1 !text-[19px]">${p.name}</h3>
       ${p.dps.length ? `<span class="text-[12px] ${open ? 'text-ochre' : 'text-steel'}">${open ? `${open} required open` : 'Required complete'}</span>
       <span class="text-[12px] text-mute num">${p.done}/${p.dps.length} required</span>` : '<span class="text-[12px] text-mute">Nothing required yet</span>'}`;
-    $(`#section-body-${key}`).innerHTML = (p.dps.length ? `<div class="px-5 pt-3 pb-1 eyebrow">Required for ${EQ.REQUIRED_FOR}</div>${p.dps.map((d) => dpRow(s, d)).join('')}` : '')
-      + (p.opt.length ? `<div class="opt-block"><div class="px-5 pt-4 pb-1 flex items-baseline gap-3"><span class="eyebrow !text-mute">Optional now</span><span class="text-[11.5px] text-mute">Helpful later; doesn't count toward progress</span><span class="ml-auto text-[11.5px] text-mute num">${p.optDone}/${p.opt.length} captured</span></div>${p.opt.map((d) => dpRow(s, d)).join('')}</div>` : '');
+    const act = p.dps.filter((d) => dpStatus(d) !== 'ok'), done = p.dps.filter((d) => dpStatus(d) === 'ok');
+    $(`#section-body-${key}`).innerHTML = (p.dps.length ? (act.length ? `<div class="px-5 pt-3 pb-1 eyebrow">Next steps · required for ${EQ.REQUIRED_FOR}</div>${act.map((d) => dpRow(s, d)).join('')}` : `<div class="px-5 py-3 text-[13px] text-steel">All required inputs in this section are confirmed.</div>`) : '')
+      + (done.length ? fold(`done-${key}`, `Confirmed · ${done.length}`, 'Required inputs already in', done.map((d) => dpRow(s, d)).join('')) : '')
+      + (p.opt.length ? fold(`opt-${key}`, `Optional now · ${p.optDone}/${p.opt.length} captured`, "Helpful later; doesn't count toward progress", `<div class="opt-block">${p.opt.map((d) => dpRow(s, d)).join('')}</div>`, true) : '');
+  }
+  /* What to do about an open data point: the kind of action, concrete steps, and one-click buttons. */
+  const ACTION_KIND = {
+    facility: { label: 'Reach out to the facility', tone: 'gap' },
+    utility: { label: 'Request from the utility', tone: 'gap' },
+    lookup: { label: 'Look up public data', tone: 'ink' },
+    task: { label: 'EQORE task', tone: 'ink' },
+    confirm: { label: 'Incomplete data: confirm it', tone: 'ok' },
+  };
+  const LOOKUP = {
+    feeder: (s) => [`Run <span class="font-mono">./site_record "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}" --utility ${s.utility === 'PG&E' ? 'pge' : s.utility === 'National Grid' ? 'nationalgrid_ma' : s.utility === 'SCE' ? 'sce' : esc(String(s.utility).toLowerCase())}</span> for the nearest feeder and hosting capacity.`, `Or open the ${esc(s.utility)} hosting-capacity map and read the feeder at the address.`],
+    codes: (s) => [`Confirm the adopted building, electrical and fire code editions with ${esc(s.ahj || 'the AHJ')}, plus any local amendments for energy storage.`],
+    permits: (s) => [s.sf ? 'Refresh the DataSF permit history in Permit records.' : `Search the ${esc(s.city)} permit portal for the confirmed parcel, or run <span class="font-mono">python -m permits fetch "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}"</span> if the city has an adapter.`],
+    setback: () => ['Open the aerial and the parcel boundary (Address lookup) and measure from the candidate pad to lot lines, buildings and public ways.', 'Compare with NFPA 855 / IFC 1207 separation (10 ft to lot lines and exposures, 3 ft with a barrier).'],
+    vehicle: () => ['Check the aerial and street view for drive aisles, loading docks and parking next to the candidate pad; plan bollards where vehicles pass within reach.'],
+    incentive: (s) => [s.region === 'ma' ? 'Check ConnectedSolutions enrollment and Clean Peak eligibility for this utility and system size.' : 'Check SGIP budget status and other utility programs for this territory.'],
+  };
+  const TASK = {
+    opMode: () => ['Confirm on the sales call: non-export peak shaving, backup, or both.', 'Record the answer here; it decides whether export controls or a backup transfer switch are in scope.'],
+    interconnect: (s) => [`Prepare the interconnection application under ${esc(((EQ.REF.interconnection || {})[s.utility] || {}).name || s.utility + ' rules')}.`],
+    ahjPreApp: (s) => [`Schedule a pre-submittal meeting with ${esc(s.fireDept || 'the fire marshal')} to review the location, separation and access.`],
+    ventilation: () => ['Attach the enclosure cut sheet (thermal management, UL 9540).'],
+  };
+  function actionFor(s, d) {
+    const st = dpStatus(d), steps = [], btns = [];
+    let kind;
+    if (st === 'review' || (st === 'ok' && !d.verified && d.requiresSignoff)) {
+      kind = 'confirm';
+      steps.push(`Current value: <span class="text-ink">${esc(d.value)}</span>`, `Source: ${esc(d.src || '—')}${d.conf ? ` (${esc(confLabel[d.conf] || d.conf)})` : ''}.`);
+      if (d.reviewNote) steps.push(esc(d.reviewNote) + '.');
+      steps.push('Check it against the source, a photo or the customer, then confirm it, or override with the right value.');
+      const file = d.file && s.files.find((f) => f.key === d.file);
+      if (file) btns.push(`<button class="btn btn-secondary" data-action="open-file" data-file="${file.id}">Open source</button>`);
+      else if (d.src) btns.push(`<button class="btn btn-secondary" data-action="source" data-src="${esc(d.src)}" data-title="${esc(d.label)}" ${d.srcUrl ? `data-url="${esc(d.srcUrl)}"` : ''}>Open source</button>`);
+      btns.push(`<button class="btn btn-secondary" data-action="resolve-dp" data-dp="${d.key}">Override</button>`, `<button class="btn btn-primary" data-action="toggle-verify" data-dp="${d.key}" data-close="1">Confirm</button>`);
+    } else if (d.owner === 'fm') {
+      kind = 'facility';
+      steps.push(`Ask ${esc((s.fm && s.fm.name && s.fm.name !== 'Facility contact') ? s.fm.name : 'the facility manager')} for: <span class="text-ink">${esc(d.ask)}</span>.`);
+      if (/photo/i.test(d.ask)) steps.push('<span class="text-ochre">Photos only of labels visible from the floor; no opening equipment or climbing to a transformer.</span>');
+      if (d.rfi) steps.push(`Requested ${esc(relTime(d.rfi.at))} by ${esc(d.rfi.channel)}; follow up if nothing has come back.`);
+      steps.push('When it arrives, upload it here or enter the value from it.');
+      btns.push(`<button class="btn btn-secondary" data-action="open-rfi" data-dp="${d.key}">Text request</button>`, `<label class="btn btn-secondary cursor-pointer">Upload<input type="file" class="hidden" data-upload="${d.key}" /></label>`, `<button class="btn btn-primary" data-action="resolve-dp" data-dp="${d.key}">Enter value</button>`);
+    } else if (d.owner === 'utility') {
+      kind = 'utility';
+      const ia = (EQ.REF.interconnection || {})[s.utility];
+      steps.push(`Request from ${esc(s.utility)}: <span class="text-ink">${esc(d.ask)}</span>.`, 'Ask through the pre-application or service request; utilities answer these in writing.');
+      if (ia) steps.push(`Interconnection rules: <a class="link" href="${esc(ia.url)}" target="_blank" rel="noopener">${esc(ia.name)}</a>.`);
+      btns.push(`<button class="btn btn-primary" data-action="resolve-dp" data-dp="${d.key}">Enter value</button>`);
+    } else if (LOOKUP[d.key]) {
+      kind = 'lookup'; LOOKUP[d.key](s).forEach((x) => steps.push(x));
+      if (d.key === 'setback' || d.key === 'vehicle') btns.push('<button class="btn btn-secondary" data-action="open-satellite">Open aerial</button>');
+      btns.push(`<button class="btn btn-primary" data-action="resolve-dp" data-dp="${d.key}">Enter value</button>`);
+    } else {
+      kind = 'task'; (TASK[d.key] ? TASK[d.key](s) : [esc(d.ask)]).forEach((x) => steps.push(x));
+      btns.push(`<button class="btn btn-primary" data-action="resolve-dp" data-dp="${d.key}">Enter value</button>`);
+    }
+    return { kind, steps, btns, why: isReq(d) ? EQ.REQUIRED[d.key] : null, when: isReq(d) ? `Required for ${EQ.REQUIRED_FOR}` : `Optional now · needed for ${EQ.LATER[d.key] || 'later steps'}` };
+  }
+  function openActionModal(s, key) {
+    const d = s.dps.find((x) => x.key === key), a = actionFor(s, d), k = ACTION_KIND[a.kind];
+    openModal({ title: esc(d.label), subtitle: `${esc(secName(d.sec))} · ${esc(a.when)}`, size: 'max-w-xl',
+      body: `<div class="flex items-center gap-2">${tag(k.tone, k.label)}</div>
+        <ol class="mt-4 space-y-2 text-[13.5px] text-ink2 list-decimal pl-5">${a.steps.map((x) => `<li>${x}</li>`).join('')}</ol>
+        ${a.why ? `<div class="text-[12.5px] text-ink2 border-l-2 border-ink pl-3 mt-5"><span class="text-ink">Why it's needed:</span> ${esc(a.why)}</div>` : ''}`,
+      footer: `<button class="btn btn-ghost" data-action="close-modal">Close</button>${a.btns.join('')}` });
+  }
+  // All required open items for a project, grouped by the kind of action.
+  function openNextSteps(s) {
+    const items = s.dps.filter((d) => isReq(d) && (dpStatus(d) !== 'ok' || (d.requiresSignoff && !d.verified)) && (d.sec !== 'field' || fieldActive(s)));
+    const groups = Object.keys(ACTION_KIND).map((k) => [k, items.filter((d) => actionFor(s, d).kind === k)]).filter(([, v]) => v.length);
+    openModal({ title: 'What to do next', subtitle: `${esc(s.name)} · ${items.length} required item${items.length === 1 ? '' : 's'} open`, size: 'max-w-2xl',
+      body: groups.length ? groups.map(([k, v]) => `<div class="mt-4 first:mt-0"><div class="flex items-center gap-2 mb-2">${tag(ACTION_KIND[k].tone, ACTION_KIND[k].label)}<span class="text-[11.5px] text-mute num">${v.length}</span></div>
+        <ul class="border border-line">${v.map((d) => `<li class="flex items-center gap-3 px-3 py-2.5 border-t border-line2 first:border-t-0"><div class="min-w-0 flex-1"><div class="text-[13px] text-ink">${esc(d.label)}</div><div class="text-[12px] text-ink2 truncate">${esc(dpStatus(d) === 'missing' || dpStatus(d) === 'requested' ? d.ask : d.value)}</div></div>
+          <button class="btn btn-secondary btn-xs shrink-0" data-action="what-to-do" data-dp="${d.key}" data-id="${s.id}">What to do</button></li>`).join('')}</ul></div>`).join('')
+        : '<div class="text-[13.5px] text-steel">All required inputs are in and confirmed. Review the gate checks to advance.</div>',
+      footer: `<button class="btn btn-ghost" data-action="close-modal">Close</button>${S.route.view !== 'site' ? `<button class="btn btn-primary" data-action="open-site" data-id="${s.id}">Open project</button>` : ''}` });
   }
   function dpRow(s, d) {
     const st = dpStatus(d);
@@ -990,9 +1084,10 @@
       main = `<div class="text-[14px] text-ink num leading-snug break-words">${esc(d.value)}</div><div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">${src}<span class="text-[11.5px] text-mute">${confLabel[d.conf] || ''}</span></div>`;
       right = `<button class="toggle" role="switch" aria-checked="${!!d.verified}" aria-label="Confirm ${esc(d.label)}" data-action="toggle-verify" data-dp="${d.key}"></button>`;
     }
+    const todo = st !== 'ok' ? `<button class="btn btn-primary btn-xs" data-action="what-to-do" data-dp="${d.key}">What to do</button>` : '';
     return `<div class="dp-row ${cls}" data-action="open-dp" data-dp="${d.key}" data-dp-row="${d.key}">
       <div class="min-w-0"><div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><span class="text-[12px] text-mute">${esc(d.label)}</span>${statusTag(d)}</div><div class="mt-1">${main}</div></div>
-      <div class="flex items-start pt-1" data-stop>${right}</div></div>`;
+      <div class="flex items-start gap-1.5 pt-1 flex-wrap justify-end" data-stop>${todo}${right}</div></div>`;
   }
   function openDpModal(s, key) {
     const d = s.dps.find((x) => x.key === key), st = dpStatus(d);
@@ -1071,7 +1166,7 @@
     const later = rel.filter((d) => !isReq(d) && d.sec !== 'field' && dpStatus(d) !== 'ok');
     const row = (d, ctl) => `<li class="px-5 py-2.5 border-t border-line2 flex items-start gap-3 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}">
         <div class="min-w-0 flex-1"><div class="text-[13px] text-ink leading-snug">${esc(['fm', 'utility'].includes(d.owner) && dpStatus(d) !== 'review' ? d.ask : d.label)}</div><div class="mt-0.5">${statusTag(d)}</div></div>
-        <div data-stop class="shrink-0 pt-0.5 flex items-center gap-1.5">${ctl}</div></li>`;
+        <div data-stop class="shrink-0 pt-0.5 flex items-center gap-1.5"><button class="btn btn-secondary btn-xs" data-action="what-to-do" data-dp="${d.key}">What to do</button>${ctl}</div></li>`;
     const group = (title, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-2 text-[11.5px] text-mute">${title}</div><ul>${items.map((d) => row(d, ctl(d))).join('')}</ul>` : '';
     $('#site-requests').innerHTML = `
       <div class="panel-head"><div class="eyebrow flex-1">Required open items</div><span class="text-[11px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length}</span></div>
@@ -1397,10 +1492,12 @@
         break;
       }
       case 'addr-section': if (s) { S.addrSection = S.addrSection === el.dataset.sec || (S.addrSection == null && el.dataset.sec === [...new Set(EQ.addrDoc(s).record.fields.map((f) => f.section))][0]) ? '' : el.dataset.sec; renderAddr(s); } break;
-      case 'set-intake': if (s) {
-        const i = +el.dataset.i; s.intake = i; log(s, `Step set to ${EQ.INTAKE[i].n} ${EQ.INTAKE[i].label}`); persist();
-        $('#site-intake').innerHTML = intakeHTML(s); toast(`${esc(s.name)} · ${esc(stepLabel(s))}`);
+      case 'what-to-do': {
+        e.stopPropagation(); closeModal();
+        if (s) openActionModal(s, el.dataset.dp);
+        else if (el.dataset.id) { const id = el.dataset.id, k = el.dataset.dp; go(id); setTimeout(() => { const t = site(id); if (t) openActionModal(t, k); }, 350); }
       } break;
+      case 'next-steps': { const t = s || site(el.dataset.id); if (t) { e.stopPropagation(); openNextSteps(t); } } break;
       case 'stage-filter':
         S.filters.stage = S.filters.stage === el.dataset.stage && el.dataset.stage !== 'all' ? 'all' : el.dataset.stage;
         if (S.route.view !== 'pipeline') go(null); else { renderStageRail(); renderPipeline(); }
@@ -1529,6 +1626,11 @@
     if (S.route.view === 'site' && /^[1-4]$/.test(e.key) && !$('#modal')) { const t = $(`#section-${EQ.SECTIONS[+e.key - 1].key}`); if (t) t.scrollIntoView({ behavior: 'smooth' }); }
   });
   window.addEventListener('hashchange', onRoute);
+  document.addEventListener('toggle', (e) => {
+    const d = e.target; if (!d.matches || !d.matches('details[data-fold]')) return;
+    S.folds = S.folds || {}; S.folds[d.dataset.fold] = d.open;
+    if (d.open) Object.values(R.charts || {}).forEach((c) => c.resize && c.resize());
+  }, true);
   window.addEventListener('storage', (e) => {
     if (e.key !== EQ.LEADS_KEY) return;
     const fresh = EQ.buildLeadSites(new Set(S.sites.map((x) => x.id)));

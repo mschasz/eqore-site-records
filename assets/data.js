@@ -605,7 +605,7 @@ EQ.leadSite = function (lead) {
     sector: lead.type || 'Commercial / industrial', tenant: lead.facility, address: street.replace(/\b([A-Z])([A-Z]+)\b/g, (m, a, b) => a + b.toLowerCase()), zip: g.zip || '',
     neighborhood: g.county ? `${g.county} County` : '', apn: '', apnCandidate: true, occupancy: null, stories: null, floorArea: lead.sqft || null, yearBuilt: null,
     city: g.city || '', state: st, region: st.toLowerCase(), countyFips: g.countyFips || '', county: g.county || '', lat: g.lat ?? null, lng: g.lng ?? null,
-    utility: lead.utility, tariff: lead.rate ? `${lead.utility} ${lead.rate}` : null, stage: 'intake', intake: 0,
+    utility: lead.utility, tariff: lead.rate ? `${lead.utility} ${lead.rate}` : null, stage: 'intake',
     summary: '', areas: {}, findings: [], known: {},
   };
   return s;
