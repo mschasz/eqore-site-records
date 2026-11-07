@@ -296,9 +296,9 @@
     const root = $('#view-pipeline');
     if (!root.dataset.built) {
       root.innerHTML = `
-        <section class="flex flex-wrap items-end gap-6">
-          <div class="min-w-0 flex-1"><h1 class="display text-[34px] leading-tight">Projects</h1></div>
-          <p class="text-[12.5px] text-ink2 max-w-md">San Francisco leads come from DataSF benchmarking and permits; the rest from the EQORE facility list. Every site has a record built from its address alone (parcel, zoning, hazards, fire authority, utility). Click any value to see its source.</p>
+        <section class="flex flex-wrap items-end gap-x-6 gap-y-3">
+          <div class="min-w-0 flex-1"><h1 class="display text-[30px] leading-tight">Projects</h1></div>
+          <dl id="pipe-stats" class="flex flex-wrap gap-x-8 gap-y-2 text-[12.5px]"></dl>
         </section>
         <section class="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div class="xl:col-span-12 panel">
@@ -312,13 +312,13 @@
               </div>
             </div>
             <div class="relative">
-              <div id="pipeline-map" class="h-[440px] lg:h-[520px] w-full"></div>
+              <div id="pipeline-map" class="h-[260px] lg:h-[300px] w-full"></div>
               <div id="map-hover" class="hidden-card"></div>
-              <div class="absolute left-3 bottom-3 z-[500] bg-white border border-line px-3 py-2 text-[11px] text-ink2 flex flex-wrap gap-x-4 gap-y-1">
+            </div>
+            <div class="border-t border-line2 px-5 py-2 text-[11px] text-ink2 flex flex-wrap gap-x-4 gap-y-1">
                 <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3" style="background:rgba(179,200,228,.6);border:1px solid #9aa0a9"></span>EQORE state</span>
                 <span class="flex items-center gap-1.5"><span class="inline-block w-3 h-3" style="background:rgba(60,99,144,.45);border:1px solid #446c87"></span>County with leads</span>
                 ${[['ok', 'Ready for next step'], ['gap', 'Open items'], ['crit', 'Blocked']].map(([c, l]) => `<span class="flex items-center gap-1.5"><span class="eq-pin ${c} !w-2.5 !h-2.5 !border-0 !shadow-none"></span>${l}</span>`).join('')}
-              </div>
             </div>
           </div>
         </section>
@@ -326,7 +326,19 @@
       root.dataset.built = '1';
       initMap();
     }
-    renderDirectory(); refreshMap(); syncMapButtons();
+    renderPipeStats(); renderDirectory(); refreshMap(); syncMapButtons();
+  }
+  // What needs the team's attention across the projects in view; each figure filters nothing, it just counts.
+  function renderPipeStats() {
+    const el = $('#pipe-stats'); if (!el) return;
+    const list = S.sites.filter((x) => S.filters.region === 'all' || x.region === S.filters.region);
+    const intake = list.filter((x) => x.stage === 'intake');
+    const ready = intake.filter((x) => score(x) === 100).length;
+    const req = list.reduce((a, x) => a + reqOpen(x).length, 0);
+    const waiting = list.filter((x) => openBy(x, 'fm').length).length;
+    const risks = list.reduce((a, x) => a + x.findings.filter((f, i) => f.sev === 'risk' && !(x.reviewed || {})[i]).length, 0);
+    const stat = (k, v) => `<div class="flex items-baseline gap-2"><dt class="text-mute">${k}</dt><dd class="text-ink num text-[15px]">${v}</dd></div>`;
+    el.innerHTML = stat('Projects', list.length) + stat('In intake', intake.length) + stat('Ready for development', ready) + stat('Required items open', req) + stat('Waiting on a facility', waiting) + stat('Open risks', risks);
   }
   function renderDirectory() {
     const list = sortedSites(filteredSites());
@@ -401,6 +413,7 @@
     hov.addEventListener('mouseenter', () => clearTimeout(R.hoverTimer));
     hov.addEventListener('mouseleave', scheduleHideHover);
     map.fitBounds(US_BOUNDS);
+    setTimeout(() => { map.invalidateSize(); fitRegion(S.filters.region || 'all', false); }, 60);
     loadBoundaries();
   }
   async function loadBoundaries() {
@@ -456,7 +469,10 @@
   }
   function fitRegion(region, animate = true) {
     if (!R.map) return;
-    if (region === 'all') R.map.fitBounds(US_BOUNDS, { animate });
+    if (region === 'all') {
+      const pts = S.sites.filter((x) => x.lat != null).map((x) => [x.lat, x.lng]);
+      R.map.fitBounds(pts.length > 1 ? L.latLngBounds(pts).pad(0.15) : US_BOUNDS, { animate, maxZoom: 6 });
+    }
     else {
       const b = (R.stateBounds || {})[EQ.STATES[region].fips];
       if (b) R.map.fitBounds(b, { padding: [20, 20], animate });
