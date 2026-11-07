@@ -305,7 +305,7 @@
             <div class="panel-head flex-wrap">
               <div class="min-w-0 flex-1"><div class="eyebrow">Map · states and counties</div></div>
               <div class="flex text-[12px] border border-line" role="group" aria-label="Region">
-                ${[['all', 'United States'], ['ca', 'California'], ['ma', 'Massachusetts'], ['nh', 'New Hampshire']].map(([k, l]) => `<button class="px-3 h-7" data-action="map-jump" data-region="${k}">${l}</button>`).join('')}
+                ${[['all', 'United States'], ['ca', 'California'], ['ma', 'Massachusetts'], ['nh', 'New Hampshire']].filter(([k]) => k === 'all' || S.sites.some((x) => x.region === k)).map(([k, l]) => `<button class="px-3 h-7" data-action="map-jump" data-region="${k}">${l}</button>`).join('')}
               </div>
               <div class="flex text-[12px] border border-line" role="group" aria-label="Base map">
                 <button class="px-3 h-7" data-action="map-base" data-base="streets">Map</button><button class="px-3 h-7" data-action="map-base" data-base="satellite">Aerial</button>
@@ -1632,6 +1632,8 @@
     if (gPressed && e.key === 'p') go(null);
     if (S.route.view === 'site' && /^[1-4]$/.test(e.key) && !$('#modal')) { const t = $(`#section-${EQ.SECTIONS[+e.key - 1].key}`); if (t) t.scrollIntoView({ behavior: 'smooth' }); }
   });
+  // Region filter lists only regions that have leads.
+  $$('#region-filter option').forEach((o) => { if (o.value !== 'all' && !S.sites.some((x) => x.region === o.value)) o.hidden = o.disabled = true; });
   window.addEventListener('hashchange', onRoute);
   document.addEventListener('toggle', (e) => {
     const d = e.target; if (!d.matches || !d.matches('details[data-fold]')) return;
