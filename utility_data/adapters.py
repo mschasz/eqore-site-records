@@ -282,7 +282,9 @@ ADAPTERS: dict[str, tuple[str, Callable[[Http, dict, float, float], dict[str, st
 # Utilities without an adapter yet: name and public hosting-capacity map, where we have one we have opened.
 KNOWN_WITHOUT_ADAPTER: dict[str, tuple[str, str | None]] = {
     "sdge": ("San Diego Gas & Electric (SDG&E)", None),
-    "eversource_ma": ("Eversource (NSTAR Electric), Massachusetts", None),
+    # Eversource MA publishes its hosting capacity only through a third-party web app (no public REST service found
+    # on 2026-11-07); reading it would need scraping, so it stays a manual lookup.
+    "eversource_ma": ("Eversource (NSTAR Electric), Massachusetts", "https://navigator.eversource.envelio.com/"),
     "unitil_ma": ("Unitil (Fitchburg Gas and Electric), Massachusetts", None),
     "eversource_nh": ("Eversource (PSNH), New Hampshire", None),
     "nationalgrid_ny": ("National Grid New York", None),

@@ -119,7 +119,7 @@ select.field { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .segbar > div > i { position: absolute; inset: 0 auto 0 0; transition: width .5s; }
 
 /* Data rows */
-.dp-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--line2); cursor: pointer; }
+.dp-row { display: grid; grid-template-columns: 132px minmax(0, 1fr) auto; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--line2); cursor: pointer; }
 .dp-row:first-child { border-top: 0; }
 .dp-row:hover { background: #fcfbfa; }
 .dp-row.is-gap { box-shadow: inset 2px 0 0 #b07a20; }
@@ -189,3 +189,8 @@ details[data-fold][open] > summary .chev { transform: rotate(45deg); }
 .fold-body { border-top: 1px solid var(--line2); }
 .fold-body > .panel-head > h3.h-section:first-child, .fold-body > .panel-head > .eyebrow.flex-1:first-child { display: none; }
 .fold-body > div:first-child > h3.h-section { display: none; }
+
+/* Status badges always sit in the left-most column */
+.badge-col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding-top: 1px; }
+.req-row { display: grid; grid-template-columns: 132px minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+@media (max-width: 640px) { .dp-row, .req-row { grid-template-columns: 1fr; } .badge-col { flex-direction: row; flex-wrap: wrap; } }

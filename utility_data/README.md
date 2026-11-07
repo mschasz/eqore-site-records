@@ -165,6 +165,10 @@ This quote is also copied into every SCE record's notes.
 
 **Terms:** public US government service; none found beyond the general Census terms.
 
+### Eversource (Massachusetts): no adapter
+
+Eversource's MA hosting capacity and headroom map is a third-party web app (https://navigator.eversource.envelio.com/, linked from eversource.com). No public REST service was found (checked 2026-11-07), and reading the app would require scraping, which this tool doesn't do. Eversource records are written as "no adapter yet" with the map link, and every field is a gap to look up by hand.
+
 ## Reading the numbers
 
 - **Screening only.** Hosting capacity values are screening estimates. They are not interconnection approvals or cost estimates, and they change with each utility release.

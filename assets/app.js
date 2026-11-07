@@ -184,10 +184,12 @@
 
   /* ------------------------------------------------------- UI atoms */
   const tag = (cls, text) => `<span class="tag ${cls}">${esc(text)}</span>`;
+  const reqTag = (d) => (isReq(d) ? '<span class="tag ink">Required</span>' : '<span class="tag muted">Optional</span>');
+  // Left-most column of every data-point row: requirement, status, and (optional items) the step that needs it.
+  const badgeCol = (d) => `<div class="badge-col">${reqTag(d)}${statusTag(d)}${!isReq(d) && dpStatus(d) !== 'ok' ? `<span class="text-[11px] text-mute leading-tight">For ${esc(EQ.LATER[d.key] || 'later')}</span>` : ''}</div>`;
   function statusTag(d) {
     const st = dpStatus(d);
-    if (!isReq(d) && (st === 'missing' || st === 'requested')) return tag('muted', `Optional now · ${EQ.LATER[d.key] || 'later'}`);
-    if (isReq(d) && st === 'missing') return tag('crit', 'Required · missing');
+    if (st === 'missing') return isReq(d) ? tag('crit', 'Missing') : tag('muted', 'Not yet');
     if (st === 'ok') return tag(d.verified ? 'ok' : 'muted', d.verified ? 'Confirmed' : 'Unconfirmed');
     if (st === 'review') return tag('ok', 'Needs confirmation');
     if (st === 'requested') return tag('gap', `Requested ${relTime(d.rfi.at)}`);
@@ -546,11 +548,13 @@
         <div class="px-6 pb-6 pt-1" id="site-intake">${intakeHTML(s)}</div>
       </section>
 
+      <section class="panel" id="site-requests"></section>
+
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border-l border-t border-line bg-white" id="snapshot"></section>
 
       <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <div class="xl:col-span-8 panel" id="findings"></div>
-        <aside class="xl:col-span-4 space-y-6"><div class="panel" id="site-requests"></div>${panelFold('site-activity', 'Activity', `${s.activity.length} entries`)}</aside>
+        <aside class="xl:col-span-4 space-y-6">${panelFold('site-activity', 'Activity', `${s.activity.length} entries`)}</aside>
       </section>
 
       ${panelFold('site-addr', 'Address lookup', (() => { const d = EQ.addrDoc(s); return d ? `${d.record.summary.required_done_pct}% of required items from public data · ${d.record.sources.length} sources` : 'Not built yet'; })())}
@@ -1000,7 +1004,7 @@
     confirm: { label: 'Incomplete data: confirm it', tone: 'ok' },
   };
   const LOOKUP = {
-    feeder: (s) => [`Run <span class="font-mono">./site_record "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}" --utility ${s.utility === 'PG&E' ? 'pge' : s.utility === 'National Grid' ? 'nationalgrid_ma' : s.utility === 'SCE' ? 'sce' : esc(String(s.utility).toLowerCase())}</span> for the nearest feeder and hosting capacity.`, `Or open the ${esc(s.utility)} hosting-capacity map and read the feeder at the address.`],
+    feeder: (s) => s.utility === 'Eversource' ? ['Eversource MA has no public data service, so look it up by hand: open the <a class="link" href="https://navigator.eversource.envelio.com/" target="_blank" rel="noopener">Eversource hosting capacity and headroom map</a>, search the address, and record the circuit, voltage and headroom with the map date.'] : [`Run <span class="font-mono">./site_record "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}" --utility ${s.utility === 'PG&E' ? 'pge' : s.utility === 'National Grid' ? 'nationalgrid_ma' : s.utility === 'SCE' ? 'sce' : esc(String(s.utility).toLowerCase())}</span> for the nearest feeder and hosting capacity.`, `Or open the ${esc(s.utility)} hosting-capacity map and read the feeder at the address.`],
     codes: (s) => [`Confirm the adopted building, electrical and fire code editions with ${esc(s.ahj || 'the AHJ')}, plus any local amendments for energy storage.`],
     permits: (s) => [s.sf ? 'Refresh the DataSF permit history in Permit records.' : `Search the ${esc(s.city)} permit portal for the confirmed parcel, or run <span class="font-mono">python -m permits fetch "${esc(s.address)}, ${esc(s.city)}, ${esc(s.state)}"</span> if the city has an adapter.`],
     setback: () => ['Open the aerial and the parcel boundary (Address lookup) and measure from the candidate pad to lot lines, buildings and public ways.', 'Compare with NFPA 855 / IFC 1207 separation (10 ft to lot lines and exposures, 3 ft with a barrier).'],
@@ -1062,7 +1066,7 @@
     const groups = Object.keys(ACTION_KIND).map((k) => [k, items.filter((d) => actionFor(s, d).kind === k)]).filter(([, v]) => v.length);
     openModal({ title: 'What to do next', subtitle: `${esc(s.name)} · ${items.length} required item${items.length === 1 ? '' : 's'} open`, size: 'max-w-2xl',
       body: groups.length ? groups.map(([k, v]) => `<div class="mt-4 first:mt-0"><div class="flex items-center gap-2 mb-2">${tag(ACTION_KIND[k].tone, ACTION_KIND[k].label)}<span class="text-[11.5px] text-mute num">${v.length}</span></div>
-        <ul class="border border-line">${v.map((d) => `<li class="flex items-center gap-3 px-3 py-2.5 border-t border-line2 first:border-t-0"><div class="min-w-0 flex-1"><div class="text-[13px] text-ink">${esc(d.label)}</div><div class="text-[12px] text-ink2 truncate">${esc(dpStatus(d) === 'missing' || dpStatus(d) === 'requested' ? d.ask : d.value)}</div></div>
+        <ul class="border border-line">${v.map((d) => `<li class="req-row px-3 py-2.5 border-t border-line2 first:border-t-0">${badgeCol(d)}<div class="min-w-0"><div class="text-[13px] text-ink">${esc(d.label)}</div><div class="text-[12px] text-ink2 truncate">${esc(dpStatus(d) === 'missing' || dpStatus(d) === 'requested' ? d.ask : d.value)}</div></div>
           <button class="btn btn-secondary btn-xs shrink-0" data-action="what-to-do" data-dp="${d.key}" data-id="${s.id}">What to do</button></li>`).join('')}</ul></div>`).join('')
         : '<div class="text-[13.5px] text-steel">All required inputs are in and confirmed. Review the gate checks to advance.</div>',
       footer: `<button class="btn btn-ghost" data-action="close-modal">Close</button>${S.route.view !== 'site' ? `<button class="btn btn-primary" data-action="open-site" data-id="${s.id}">Open project</button>` : ''}` });
@@ -1086,7 +1090,8 @@
     }
     const todo = st !== 'ok' ? `<button class="btn btn-primary btn-xs" data-action="what-to-do" data-dp="${d.key}">What to do</button>` : '';
     return `<div class="dp-row ${cls}" data-action="open-dp" data-dp="${d.key}" data-dp-row="${d.key}">
-      <div class="min-w-0"><div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><span class="text-[12px] text-mute">${esc(d.label)}</span>${statusTag(d)}</div><div class="mt-1">${main}</div></div>
+      ${badgeCol(d)}
+      <div class="min-w-0"><div class="text-[12px] text-mute">${esc(d.label)}</div><div class="mt-1">${main}</div></div>
       <div class="flex items-start gap-1.5 pt-1 flex-wrap justify-end" data-stop>${todo}${right}</div></div>`;
   }
   function openDpModal(s, key) {
@@ -1164,12 +1169,13 @@
     const utItems = rel.filter((d) => isReq(d) && d.owner === 'utility' && openSt(d));
     const review = rel.filter((d) => isReq(d) && dpStatus(d) === 'review');
     const later = rel.filter((d) => !isReq(d) && d.sec !== 'field' && dpStatus(d) !== 'ok');
-    const row = (d, ctl) => `<li class="px-5 py-2.5 border-t border-line2 flex items-start gap-3 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}">
-        <div class="min-w-0 flex-1"><div class="text-[13px] text-ink leading-snug">${esc(['fm', 'utility'].includes(d.owner) && dpStatus(d) !== 'review' ? d.ask : d.label)}</div><div class="mt-0.5">${statusTag(d)}</div></div>
+    const row = (d, ctl) => `<li class="req-row px-5 py-2.5 border-t border-line2 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}">
+        ${badgeCol(d)}
+        <div class="min-w-0"><div class="text-[13px] text-ink leading-snug">${esc(d.label)}</div><div class="text-[12px] text-ink2 leading-snug">${esc(dpStatus(d) === 'review' ? d.value : d.ask)}</div></div>
         <div data-stop class="shrink-0 pt-0.5 flex items-center gap-1.5"><button class="btn btn-secondary btn-xs" data-action="what-to-do" data-dp="${d.key}">What to do</button>${ctl}</div></li>`;
-    const group = (title, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-2 text-[11.5px] text-mute">${title}</div><ul>${items.map((d) => row(d, ctl(d))).join('')}</ul>` : '';
+    const group = (title, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-2 eyebrow">${title} <span class="text-mute num">${items.length}</span></div><ul>${items.map((d) => row(d, ctl(d))).join('')}</ul>` : '';
     $('#site-requests').innerHTML = `
-      <div class="panel-head"><div class="eyebrow flex-1">Required open items</div><span class="text-[11px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length}</span></div>
+      <div class="panel-head"><h2 class="h-section !text-[19px] flex-1">Required open items</h2><span class="text-[12px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length} open</span>${fmItems.length + eqItems.length + utItems.length + review.length ? '<button class="btn btn-primary btn-sm" data-action="next-steps">What to do next<span>→</span></button>' : ''}</div>
       ${group('From the facility', fmItems, (d) => `<label class="btn btn-ghost btn-xs cursor-pointer">Upload<input type="file" class="hidden" data-upload="${d.key}" /></label>${dpStatus(d) === 'missing' ? `<input type="checkbox" class="w-4 h-4 accent-[#06162b]" data-rfi-pick="${d.key}" checked aria-label="Include in text request" />` : ''}`)}
       ${fmItems.some((d) => dpStatus(d) === 'missing') ? `<div class="px-5 py-3"><button class="btn btn-primary w-full justify-between" data-action="open-rfi">Text the facility for checked items<span>→</span></button></div>` : ''}
       ${group('From the utility (EQORE requests)', utItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}

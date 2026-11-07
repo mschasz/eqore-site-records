@@ -1,6 +1,6 @@
 {
   "schema": "eqore.site_record/v1",
-  "generated_at": "2026-11-07T22:10:37+00:00",
+  "generated_at": "2026-11-07T23:22:05+00:00",
   "input": {
     "address": "275 Cedar Hill St, Marlborough, MA",
     "utility": "eversource_ma"
@@ -166,7 +166,7 @@
     }
   ],
   "notes": [
-    "No adapter yet for 'eversource_ma'. Hosting capacity map: not known yet. Every field is a gap."
+    "No adapter yet for 'eversource_ma'. Hosting capacity map: https://navigator.eversource.envelio.com/. Every field is a gap."
   ],
   "errors": [],
   "queries": [
