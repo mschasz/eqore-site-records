@@ -523,6 +523,55 @@
     if (R.satThumb) { R.satThumb.remove(); R.satThumb = null; }
   }
   /* Header facts: SF leads from DataSF; other sites from the facility list and the address lookup. */
+  /* Rough project value: battery sale (installed price) and the customer's annual demand-charge savings.
+     System: the contracted/indicative size if known, else ~25% of peak for 2 hours.
+     Savings: the interval-data model when there is one; else 20% of peak shaved x the tariff's demand cost x 75%. */
+  const PRICE_PER_KWH = 600;   // installed C&I battery, $/kWh (typical 100 kW-1 MW systems, 2026)
+  const TYPICAL_DEMAND = { ca: 450, ma: 250, nh: 180 }; // $/kW-year when the rate schedule is unknown
+  function perKwYear(tkey) {
+    const t = (EQ.REF.tariffs || {})[tkey]; if (!t) return null;
+    const su = (t.summerMonths || [6, 7, 8, 9]).length;
+    return t.components.reduce((a, c) => a + (c.rate.summer || 0) * su + (c.rate.winter || 0) * (12 - su), 0);
+  }
+  function projectValue(s) {
+    const fac = (EQ.addrDoc(s) || {}).facility || {}, lead = s.lead || {}, pe = EQ.peakEstimate(s);
+    let peak = null, peakSrc = null;
+    if (s.interval) { peak = s.interval.peakKw; peakSrc = 'measured, interval data'; }
+    else if (fac.peak_kw && !s.fromLead) { peak = fac.peak_kw; peakSrc = `facility list (${fac.peak_basis})`; }
+    else if (lead.peakEntered) { peak = lead.peakEntered; peakSrc = 'customer, lead form'; }
+    else if (lead.estimate) { peak = lead.estimate.peak; peakSrc = `lead form estimate (${lead.estimate.basis})`; }
+    else if (pe) { peak = (pe.lo + pe.hi) / 2; peakSrc = `estimated from ${pe.year} benchmarking`; }
+    if (!peak) return null;
+    const sys = s.system && s.system.kw ? { kw: s.system.kw, kwh: s.system.kwh, src: `${s.system.status} system (facility list)` }
+      : { kw: Math.max(50, Math.round((peak * 0.25) / 25) * 25), kwh: 0, src: 'sized at ~25% of peak, 2 hours' };
+    if (!sys.kwh) sys.kwh = sys.kw * 2;
+    const sale = Math.round((sys.kwh * PRICE_PER_KWH) / 5000) * 5000;
+    let savings, savSrc, rateYr = null;
+    if (s.shave) { savings = s.shave.total; savSrc = `interval-data model, $${fmt(s.shave.ratePerKw, 2)}/kW-month from the bill`; }
+    else {
+      rateYr = (s.tariff && perKwYear(s.tariff)) || TYPICAL_DEMAND[s.region] || 200;
+      savings = Math.min(sys.kw, peak * 0.2) * rateYr * 0.75;
+      savSrc = `${fmt(Math.min(sys.kw, peak * 0.2))} kW shaved × $${fmt(rateYr)}/kW-yr ${s.tariff && perKwYear(s.tariff) ? '(' + s.tariff + ')' : '(typical for the state)'} × 75%`;
+    }
+    const programs = [];
+    const P = EQ.REF.programs || {};
+    if (s.region === 'ma' && P.connectedSolutions) programs.push(['Mass Save ConnectedSolutions', P.connectedSolutions.dailyPerKw * sys.kw, `$${P.connectedSolutions.dailyPerKw}/kW-summer, daily dispatch`]);
+    return { peak, peakSrc, sys, sale, savings, savSrc, programs, payback: savings ? sale / (savings + programs.reduce((a, x) => a + x[1], 0)) : null };
+  }
+  const kUSD = (v) => (v >= 1e6 ? `$${fmt(v / 1e6, 1)}M` : `$${fmt(Math.round(v / 1000))}K`);
+  function openValueModal(s) {
+    const v = projectValue(s); if (!v) return;
+    const row = (k, val, sub) => `<div class="grid grid-cols-[170px_1fr] gap-3 px-4 py-2.5 border-t border-line2 first:border-t-0"><dt class="text-mute">${k}</dt><dd><div class="text-ink num">${val}</div>${sub ? `<div class="text-[11.5px] text-mute">${sub}</div>` : ''}</dd></div>`;
+    openModal({ title: 'Estimated project value', subtitle: `${esc(s.name)} · rough estimate, not a quote`, size: 'max-w-xl',
+      body: `<dl class="border border-line text-[13px]">
+        ${row('Battery sale', kUSD(v.sale), `${fmt(v.sys.kw)} kW / ${fmt(v.sys.kwh)} kWh (${esc(v.sys.src)}) × $${PRICE_PER_KWH}/kWh installed`)}
+        ${row('Customer savings', `${kUSD(v.savings)}/yr`, `Demand charges: ${esc(v.savSrc)}`)}
+        ${v.programs.map(([n, a, sub]) => row(esc(n), `${kUSD(a)}/yr`, esc(sub))).join('')}
+        ${row('Peak demand', `${fmt(v.peak)} kW`, esc(v.peakSrc))}
+        ${v.payback ? row('Simple payback', `${fmt(v.payback, 1)} years`, 'Before incentives, tax credits and financing') : ''}</dl>
+        <p class="text-[12px] text-mute mt-3">Price per kWh is a typical installed C&I figure; replace it with the proposal price once quoted. Savings exclude energy arbitrage and backup value.</p>`,
+      footer: '<button class="btn btn-primary" data-action="close-modal">Close</button>' });
+  }
   // Three facts an engineer needs at a glance; the rest are under Site details.
   function keyFacts(s, l, r) {
     const all = headerFacts(s, l, r), pick = (k) => all.find((x) => x[0] === k);
@@ -601,6 +650,7 @@
               ${contactLine(s)}
               <dl class="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-[12.5px]">
                 ${keyFacts(s, l, r).map(([k, v, src]) => `<div class="min-w-0"><dt class="text-[11px] text-mute">${k}</dt><dd class="text-ink truncate max-w-[220px]">${src ? `<button class="text-left hover:text-blue underline decoration-line underline-offset-2" data-action="source" data-src="${esc(src)}" data-title="${esc(k)}">${esc(v)}</button>` : esc(v)}</dd></div>`).join('')}
+                ${(() => { const v = projectValue(s); return v ? `<div class="min-w-0"><dt class="text-[11px] text-mute">Est. project value</dt><dd><button class="text-left text-ink hover:text-blue underline decoration-line underline-offset-2 num" data-action="value-basis">${kUSD(v.sale)} sale · ${kUSD(v.savings)}/yr savings</button></dd></div>` : ''; })()}
               </dl>
             </div>
           </div>
@@ -1561,6 +1611,7 @@
         break;
       }
       case 'addr-section': if (s) { S.addrSection = S.addrSection === el.dataset.sec || (S.addrSection == null && el.dataset.sec === [...new Set(EQ.addrDoc(s).record.fields.map((f) => f.section))][0]) ? '' : el.dataset.sec; renderAddr(s); } break;
+      case 'value-basis': if (s) { e.stopPropagation(); openValueModal(s); } break;
       case 'contact-main': if (s) { e.stopPropagation(); openContactModal(s, false); } break;
       case 'contact-edit': if (s) { closeModal(); openContactModal(s, true); } break;
       case 'contact-save': if (s) saveContact(s); break;
