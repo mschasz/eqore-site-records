@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'eqore.records.v10';
+  const STORE_KEY = 'eqore.records.v11';
   const S = {
     sites: loadSites(),
     route: { view: 'pipeline', id: null },
@@ -670,6 +670,8 @@
         <aside class="xl:col-span-4 space-y-6">${panelFold('site-activity', 'Activity', `${s.activity.length} entries`)}</aside>
       </section>
 
+      <section class="panel" id="site-timeline"></section>
+
       ${panelFold('site-addr', 'Address lookup', (() => { const d = EQ.addrDoc(s); return d ? `${d.record.summary.required_done_pct}% of required items from public data · ${d.record.sources.length} sources` : 'Not built yet'; })())}
 
       <section class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
@@ -682,7 +684,7 @@
       ${panelFold('site-docs', 'Documents & approvals', `${s.docs.filter((d) => d.status === 'complete').length}/${s.docs.filter((d) => d.status !== 'na').length} complete`)}
       ${panelFold('site-vault', 'Files', `${s.files.length} file${s.files.length === 1 ? '' : 's'}`)}
       ${panelFold('site-pocs', 'Contacts', `${s.contacts.length} contacts`)}`;
-    renderScore(s); renderSnapshot(s); renderFindings(s); renderMatrix(s); renderRequests(s); renderActivity(s); renderPermits(s); renderDocs(s); renderCodes(s); renderVault(s); renderPocs(s); renderAddr(s);
+    renderScore(s); renderSnapshot(s); renderFindings(s); renderMatrix(s); renderRequests(s); renderActivity(s); renderPermits(s); renderDocs(s); renderCodes(s); renderVault(s); renderPocs(s); renderAddr(s); renderTimeline(s);
     icons(); initSatThumb(s); renderLoad(s);
   }
   function refreshSite(s, flashKey) {
@@ -1358,10 +1360,69 @@
     const c = s.contacts.find((x) => x.id === 'fm'); if (c && name) Object.assign(c, { name, title: 'Facility contact', phone, email, last: `Text request, ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` });
     keys.forEach((k) => { s.dps.find((x) => x.key === k).rfi = { to: name || phone || email, at: nowISO(), channel, link }; });
     log(s, `Requested ${keys.length} item${keys.length > 1 ? 's' : ''} from ${name || 'facility'} by ${channel}`);
+    (s.interactions = s.interactions || []).push({ id: `${s.id}:ix:${Date.now()}`, at: nowISO(), type: channel === 'SMS' ? 'Text' : 'Email', people: [name || 'Facility contact', EQ.TEAM[EQ.CURRENT_USER].name],
+      notes: [{ text: `Requested: ${keys.map((k) => s.dps.find((x) => x.key === k).ask).join('; ')}.`, by: EQ.TEAM[EQ.CURRENT_USER].name, at: nowISO() }], attachments: [] });
     const href = channel === 'SMS' ? `sms:${phone.replace(/[^0-9+]/g, '')}?&body=${encodeURIComponent(body)}` : `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(`${s.address}: battery storage evaluation`)}&body=${encodeURIComponent(body)}`;
-    closeModal(); refreshSite(s); renderPocs(s);
+    closeModal(); refreshSite(s); renderPocs(s); renderTimeline(s);
     window.location.href = href;
     toast(`Marked ${keys.length} item${keys.length > 1 ? 's' : ''} as requested`);
+  }
+  /* ----------------------------------------------------- customer timeline */
+  const IX_TYPES = ['Call', 'Email', 'Text', 'Meeting', 'Site visit', 'Documents received', 'Lead form', 'Other'];
+  const IX_TONE = { 'Lead form': 'ink', 'Documents received': 'ok', 'Site visit': 'gap', Meeting: 'gap' };
+  const ixDate = (at) => new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  function ixItem(s, ix) {
+    return `<li class="req-row px-5 py-3.5 border-t border-line2 first:border-t-0">
+      <div class="badge-col"><span class="text-[12.5px] text-ink num">${esc(ixDate(ix.at))}</span>${tag(IX_TONE[ix.type] || 'muted', ix.type)}</div>
+      <div class="min-w-0">
+        <div class="text-[12.5px] text-ink2">${ix.people.map(esc).join(' · ')}</div>
+        ${ix.notes.length ? `<ul class="mt-1.5 space-y-1.5">${ix.notes.map((n) => `<li class="text-[13px] text-ink leading-snug">${esc(n.text)}<span class="text-[11px] text-mute"> · ${esc(n.by)}, ${esc(fmtDT(n.at))}</span></li>`).join('')}</ul>` : ''}
+        ${ix.attachments.length ? `<div class="flex flex-wrap gap-1.5 mt-2">${ix.attachments.map((a) => `<button class="chip-att" ${a.fileId ? `data-action="open-file" data-file="${esc(a.fileId)}"` : ''}>${a.thumb ? `<img src="${a.thumb}" alt="" />` : '<span class="ficon !w-5 !h-6 !text-[7px]">FILE</span>'}<span class="truncate max-w-[200px] font-mono">${esc(a.name)}</span></button>`).join('')}</div>` : ''}
+      </div>
+      <div class="flex gap-1.5 shrink-0" data-stop><button class="btn btn-ghost btn-xs" data-action="ix-note" data-ix="${esc(ix.id)}">Add note</button><label class="btn btn-ghost btn-xs cursor-pointer">Attach<input type="file" class="hidden" multiple data-attach="${esc(ix.id)}" /></label></div></li>`;
+  }
+  function renderTimeline(s) {
+    const el = $('#site-timeline'); if (!el) return;
+    const ix = (s.interactions || []).slice().sort((a, b) => (a.at < b.at ? 1 : -1));
+    el.innerHTML = `<div class="panel-head"><h2 class="h-section !text-[19px] flex-1">Customer timeline</h2><span class="text-[12px] text-mute">${ix.length} interaction${ix.length === 1 ? '' : 's'}</span><button class="btn btn-primary btn-sm" data-action="ix-new">Log interaction</button></div>
+      ${ix.length ? `<ol>${ix.slice(0, 3).map((x) => ixItem(s, x)).join('')}</ol>${ix.length > 3 ? fold('timeline-earlier', `Earlier interactions · ${ix.length - 3}`, 'Older calls, emails, meetings and documents', `<ol>${ix.slice(3).map((x) => ixItem(s, x)).join('')}</ol>`) : ''}`
+        : `<div class="px-5 py-5 text-[13px] text-ink2">No customer interactions on record yet. Log calls, emails, texts, meetings and site visits here, with notes and documents.</div>`}`;
+  }
+  function openIxModal(s, prefill = {}) {
+    const c = mainContact(s), who = contactKnown(c) ? c.name : 'Facility contact';
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    openModal({ title: 'Log an interaction', subtitle: esc(s.name), size: 'max-w-lg',
+      body: `<div class="grid grid-cols-2 gap-3"><label class="block text-[12px] text-mute">Date<input id="ix-date" type="date" class="field w-full h-10 px-3 text-[14px] mt-1" value="${prefill.date || today}" /></label>
+        <label class="block text-[12px] text-mute">Type<select id="ix-type" class="field w-full h-10 px-2 text-[14px] mt-1">${IX_TYPES.filter((x) => x !== 'Lead form').map((x) => `<option ${x === (prefill.type || 'Call') ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
+        <label class="block text-[12px] text-mute mt-3">People involved<input id="ix-people" class="field w-full h-10 px-3 text-[14px] mt-1" value="${esc(prefill.people || `${who}; ${EQ.TEAM[EQ.CURRENT_USER].name}`)}" /><span class="text-[11px]">Separate names with semicolons</span></label>
+        <label class="block text-[12px] text-mute mt-3">Notes<textarea id="ix-notes" rows="4" class="field w-full px-3 py-2 text-[14px] mt-1" placeholder="What was discussed, agreed or sent">${esc(prefill.notes || '')}</textarea></label>
+        <label class="block text-[12px] text-mute mt-3">Documents<input id="ix-files" type="file" multiple class="block mt-1 text-[13px]" /></label>`,
+      footer: '<button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="ix-save">Save</button>' });
+  }
+  // Files attached to an interaction also go into Files, so they open in the same viewer.
+  async function ixAttach(s, files, who) {
+    const out = [];
+    for (const file of Array.from(files || [])) {
+      const f = { id: `${s.id}:ix:${Date.now()}:${out.length}`, key: `ix-${Date.now()}-${out.length}`, name: file.name, type: /^image\//.test(file.type) ? 'img' : /csv/.test(file.type) || /\.csv$/i.test(file.name) ? 'csv' : 'pdf', cat: 'Customer interaction', uploader: { name: who, role: 'Attached to timeline' }, date: new Date().toISOString().slice(0, 10), origin: 'Customer-provided', conf: 'high', confLabel: 'Customer document', size: `${fmt(file.size / 1024)} KB`, preview: 'upload', thumb: await thumbOf(file), dps: [], isNew: true };
+      s.files.unshift(f); out.push({ name: f.name, size: f.size, fileId: f.id, thumb: f.thumb });
+    }
+    return out;
+  }
+  async function saveIx(s) {
+    const date = $('#ix-date').value, type = $('#ix-type').value, notes = $('#ix-notes').value.trim();
+    const people = $('#ix-people').value.split(';').map((x) => x.trim()).filter(Boolean);
+    if (!date) { $('#ix-date').focus(); return; }
+    const me = EQ.TEAM[EQ.CURRENT_USER].name, at = `${date}T${new Date().toTimeString().slice(0, 8)}`;
+    const attachments = await ixAttach(s, $('#ix-files').files, me);
+    s.interactions = s.interactions || [];
+    s.interactions.push({ id: `${s.id}:ix:${Date.now()}`, at, type, people, notes: notes ? [{ text: notes, by: me, at: nowISO() }] : [], attachments });
+    const c = mainContact(s); if (c && people.includes(c.name)) c.last = `${type}, ${ixDate(at)}`;
+    log(s, `Logged ${type.toLowerCase()} with ${people.filter((x) => x !== me).join(', ') || 'customer'}`);
+    closeModal(); persist(); renderTimeline(s); renderVault(s); renderPocs(s); renderActivity(s); toast(`Logged ${esc(type.toLowerCase())}`);
+  }
+  function openIxNote(s, id) {
+    openModal({ title: 'Add a note', subtitle: esc(s.name), size: 'max-w-md', body: `<textarea id="ixn-text" rows="5" class="field w-full px-3 py-2 text-[14px]" data-ix="${esc(id)}"></textarea>`,
+      footer: `<button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="ix-note-save" data-ix="${esc(id)}">Save note</button>`, onMount: (r) => setTimeout(() => $('#ixn-text', r).focus(), 30) });
   }
   /* ----------------------------------------------------- activity */
   function log(s, text) { s.activity.unshift({ t: nowISO(), who: EQ.TEAM[EQ.CURRENT_USER].name, text }); }
@@ -1655,7 +1716,11 @@
       case 'vault-filter': S.vaultFilter = el.dataset.f; if (s) renderVault(s); break;
       case 'open-poc': if (s) openPocModal(s, el.dataset.poc); break;
       case 'copy-text': copy(el.dataset.text, 'Copied'); break;
-      case 'log-touch': if (s) { const c = s.contacts.find((x) => x.id === el.dataset.poc); c.last = `Contact logged, ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`; log(s, `Logged contact with ${c.name}`); closeModal(); renderPocs(s); refreshSite(s); toast(`Logged contact with ${esc(c.name)}`); } break;
+      case 'log-touch': if (s) { const c = s.contacts.find((x) => x.id === el.dataset.poc); closeModal(); openIxModal(s, { people: `${c.name}; ${EQ.TEAM[EQ.CURRENT_USER].name}` }); } break;
+      case 'ix-new': if (s) openIxModal(s); break;
+      case 'ix-save': if (s) saveIx(s); break;
+      case 'ix-note': if (s) { e.stopPropagation(); openIxNote(s, el.dataset.ix); } break;
+      case 'ix-note-save': if (s) { const text = $('#ixn-text').value.trim(); if (!text) { $('#ixn-text').focus(); break; } const ix = s.interactions.find((x) => x.id === el.dataset.ix); ix.notes.push({ text, by: EQ.TEAM[EQ.CURRENT_USER].name, at: nowISO() }); closeModal(); persist(); renderTimeline(s); toast('Note added'); } break;
       case 'copy-citation': if (s) { const f = s.files.find((x) => x.id === el.dataset.file); copy(`${f.name} — ${f.uploader.name} (${f.uploader.role}), ${f.origin}, ${fmtDate(f.date)}. ${f.confLabel}. ${s.name}, ${s.address}, ${s.city}.`, 'Citation copied'); } break;
       case 'download-csv': if (s) downloadCsv(s); break;
       case 'open-gate': if (s) openGateModal(s); break;
@@ -1692,6 +1757,11 @@
     const s0 = currentSite();
     if (s0 && e.target.matches('[data-review]')) { s0.reviewed = s0.reviewed || {}; s0.reviewed[e.target.dataset.review] = e.target.checked; renderFindings(s0); persist(); return; }
     if (s0 && e.target.matches('[data-upload]')) { handleUpload(s0, e.target.dataset.upload, e.target.files[0]); return; }
+    if (s0 && e.target.matches('[data-attach]')) {
+      const ix = (s0.interactions || []).find((x) => x.id === e.target.dataset.attach); const files = e.target.files;
+      if (ix && files.length) ixAttach(s0, files, EQ.TEAM[EQ.CURRENT_USER].name).then((a) => { ix.attachments.push(...a); persist(); renderTimeline(s0); renderVault(s0); toast(`Attached ${a.length} file${a.length === 1 ? '' : 's'}`); });
+      return;
+    }
     const sel = e.target.closest('select[data-doc]'); const s = currentSite();
     if (sel && s) {
       const d = s.docs.find((x) => x.key === sel.dataset.doc);

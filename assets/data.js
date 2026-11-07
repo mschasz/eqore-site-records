@@ -762,6 +762,25 @@ EQ.applyCustomerDocs = function (s) {
 };
 const fac0 = (s) => s.summary.split(' Interval data (2025)')[0].replace(/ The Oct 2026 bill shows.*$/, '').replace(/ against a [\d.,]+ kW peak/, '');
 
+/* Customer interactions (timeline). Seeded only from events on record: the lead form submission and the
+   documents the customer sent. Everything else is logged by the team in the app. */
+EQ.seedInteractions = function (s) {
+  const out = [], lead = s.lead;
+  const att = (f) => ({ name: f.name, size: f.size, fileId: f.id, thumb: f.thumb || null });
+  if (lead) {
+    const c = lead.contact || {};
+    out.push({ id: `${s.id}:ix:lead`, at: lead.createdAt, type: 'Lead form', people: [c.name || 'Customer', 'EQORE website'],
+      notes: [{ text: `Submitted the savings assessment form: ${[lead.type, lead.utility && `${lead.utility}${lead.rate ? ' ' + lead.rate : ''}`, lead.bill && `about $${Number(lead.bill).toLocaleString('en-US')}/month`].filter(Boolean).join(', ')}.${lead.notes ? ` Note: “${lead.notes}”` : ''}`, by: c.name || 'Customer', at: lead.createdAt }],
+      attachments: s.files.filter((f) => /:lead:/.test(f.id)).map(att) });
+  }
+  const docs = s.files.filter((f) => /^doc-/.test(f.key));
+  const byDate = {};
+  docs.forEach((f) => { (byDate[f.key === 'doc-interval-2025' ? '2026-11-07' : f.date] = byDate[f.key === 'doc-interval-2025' ? '2026-11-07' : f.date] || []).push(f); });
+  Object.entries(byDate).forEach(([date, fs]) => out.push({ id: `${s.id}:ix:docs:${date}`, at: `${date}T14:00:00`, type: 'Documents received', people: ['Facility contact', EQ.TEAM[s.eng].name],
+    notes: [{ text: `Customer sent ${fs.map((f) => f.name).join(', ')}.`, by: EQ.TEAM[s.eng].name, at: `${date}T14:00:00` }], attachments: fs.map(att) }));
+  return out.sort((a, b) => (a.at < b.at ? 1 : -1));
+};
+
 EQ.buildLeadSites = function (existingIds) {
   return EQ.readLeads().filter((l) => !(existingIds || new Set()).has(l.id) && l.geo && l.geo.lat != null).map((lead) => {
     const s = EQ.leadSite(lead);
@@ -769,6 +788,7 @@ EQ.buildLeadSites = function (existingIds) {
     s.dps = EQ.buildDataPoints(s); s.files = EQ.buildFiles(s); s.docs = EQ.buildDocs(s); s.contacts = EQ.buildContacts(s);
     s.activity = [{ t: lead.createdAt, who: 'Lead form', text: 'Project created from the lead form' }];
     EQ.applyLead(s); EQ.applyAddressRecord(s); EQ.applyUtilityRecord(s);
+    s.interactions = EQ.seedInteractions(s);
     return s;
   });
 };
@@ -793,6 +813,7 @@ EQ.buildSites = function () {
     EQ.applyAddressRecord(s);
     EQ.applyUtilityRecord(s);
     EQ.applyCustomerDocs(s);
+    s.interactions = EQ.seedInteractions(s);
     return s;
   });
 };
