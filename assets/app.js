@@ -364,12 +364,20 @@
     const check = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>';
     return `<div class="tracker" role="list" aria-label="Intake progress, set by the data on file" title="Progress follows the data on file">${EQ.INTAKE.map((t, i) => `<div role="listitem" class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="n num">${t.n}${i < cur ? check : ''}</div><div class="l">${esc(t.label)}</div></div>`).join('')}</div>`;
   }
+  /* The single most important thing to do on a project. Facility requests come first (longest lead time),
+     then the utility, then EQORE tasks, then confirmations; within a group, the heaviest-weighted input. */
+  function topAction(s) {
+    const rank = (d) => (dpStatus(d) === 'review' ? 3 : { fm: 0, utility: 1, eqore: 2 }[d.owner] ?? 2);
+    const items = relevant(s).filter((d) => isReq(d) && dpStatus(d) !== 'ok').sort((a, b) => rank(a) - rank(b) || b.pts - a.pts);
+    if (!items.length) { const g = gateChecks(s); return { verb: g.next ? (g.pass ? `Advance to ${EQ.STAGES[g.next].label}` : `Review gate checks for ${EQ.STAGES[g.next].label}`) : 'Operating', d: null, rest: 0 }; }
+    const d = items[0], st = dpStatus(d);
+    const verb = st === 'review' ? 'Confirm' : d.owner === 'fm' ? (st === 'requested' ? 'Follow up with the facility' : 'Ask the facility') : d.owner === 'utility' ? `Request from ${s.utility}` : 'EQORE to do';
+    return { verb, d, rest: items.length - 1 };
+  }
   function actionCell(s) {
-    const a = nextAction(s), st = EQ.INTAKE[intakeIdx(s)];
-    return `<div class="text-[13px] ${a.done ? 'text-steel' : 'text-ink'}">${esc(a.text)}</div>
-      ${a.more.length ? `<div class="text-[11.5px] text-ink2">${esc(a.more.join(' · '))}</div>` : ''}
-      ${reqOpen(s).length ? `<button class="btn btn-secondary btn-xs mt-1.5" data-action="next-steps" data-id="${s.id}" data-stop>What to do next</button>` : ''}
-      <div class="text-[11.5px] text-mute mt-0.5">${st ? `<span class="num">${st.n}</span> ${esc(st.label)}` : s.stage === 'intake' ? '<span class="num">04</span> Site data collection completed' : `Delivery · ${esc(EQ.STAGES[s.stage].label)}`}</div>`;
+    const t = topAction(s);
+    return `${t.d ? `<div class="text-[11.5px] text-mute">${esc(t.verb)}</div><div class="text-[13.5px] text-ink leading-snug">${esc(t.d.label)}</div>` : `<div class="text-[13.5px] text-steel">${esc(t.verb)}</div>`}
+      <div class="flex items-center gap-2 mt-1.5" data-stop>${t.d ? `<button class="btn btn-secondary btn-xs" data-action="next-steps" data-id="${s.id}">What to do next</button>${t.rest ? `<span class="text-[11.5px] text-mute num">+${t.rest} more</span>` : ''}` : ''}</div>`;
   }
   function rowHTML(s) {
     const sc = score(s), h = health(s), risks = s.findings.filter((f, i) => f.sev === 'risk' && !(s.reviewed || {})[i]).length, v = projectValue(s);
@@ -1783,7 +1791,7 @@
   function exportDirectory() {
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [['Facility', 'Address', 'APN', 'Type', 'Floor area sf', 'Latest grid kWh', 'Year', 'Risks', 'Design readiness', 'Step', 'Needs action'].join(',')]
-      .concat(sortedSites(filteredSites()).map((s) => { const l = latestKwh(s) || {}; return [s.name, `${s.address}, ${s.city}`, s.apn, s.sector, s.floorArea, l.kwh, l.year, s.findings.filter((f) => f.sev === 'risk').length, score(s), stepLabel(s), nextAction(s).text].map(q).join(','); }));
+      .concat(sortedSites(filteredSites()).map((s) => { const l = latestKwh(s) || {}; return [s.name, `${s.address}, ${s.city}`, s.apn, s.sector, s.floorArea, l.kwh, l.year, s.findings.filter((f) => f.sev === 'risk').length, score(s), stepLabel(s), (() => { const t = topAction(s); return t.d ? `${t.verb}: ${t.d.label}` : t.verb; })()].map(q).join(','); }));
     downloadBlob('eqore_leads.csv', rows.join('\n')); toast('Exported');
   }
   const search = $('#global-search');
