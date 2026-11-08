@@ -203,3 +203,16 @@ details[data-fold][open] > summary .chev { transform: rotate(45deg); }
 /* Section rows in the readiness panel: look and act like links */
 .sec-link { display: block; width: 100%; text-align: left; padding: 8px 10px; margin: 0 -10px; width: calc(100% + 20px); border: 1px solid transparent; cursor: pointer; transition: background .15s, border-color .15s; }
 .sec-link:hover, .sec-link:focus-visible { background: var(--paper); border-color: var(--line); outline: none; }
+
+/* Site data: one row per topic */
+.sec-fold { border-top: 1px solid var(--line2); }
+.sec-fold:first-of-type { border-top: 0; }
+.sec-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 14px 20px; cursor: pointer; list-style: none; }
+.sec-sum::-webkit-details-marker { display: none; }
+.sec-sum:hover { background: var(--paper); }
+.sec-fold > .sec-sum .chev { width: 8px; height: 8px; border-right: 1.5px solid var(--mute); border-bottom: 1.5px solid var(--mute); transform: rotate(-45deg); transition: transform .15s; }
+.sec-fold[open] > .sec-sum .chev { transform: rotate(45deg); }
+.sec-fold[open] > .sec-sum { border-bottom: 1px solid var(--line2); }
+.area-chip { background: none; border: 0; padding: 0; cursor: pointer; }
+.req-row.flash { animation: reqflash 1.6s ease-out; }
+@keyframes reqflash { 0% { background: var(--ochresoft); } 100% { background: transparent; } }

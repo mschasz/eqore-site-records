@@ -285,7 +285,7 @@
   const filteredSites = () => S.sites.filter((s) => (S.filters.region === 'all' || s.region === S.filters.region) && (S.filters.stage === 'all' || s.stage === S.filters.stage) && matchesQuery(s, S.filters.q));
   function sortedSites(list) {
     const k = S.sort.key, dir = S.sort.dir === 'asc' ? 1 : -1;
-    const val = (s) => ({ name: s.name, sector: s.sector, kwh: (latestKwh(s) || {}).kwh || 0, score: score(s), intake: intakeIdx(s) * 1000 - score(s), risks: s.findings.filter((f) => f.sev === 'risk').length }[k] ?? s.name);
+    const val = (s) => ({ name: s.name, sector: s.sector, kwh: (latestKwh(s) || {}).kwh || 0, score: score(s), intake: intakeIdx(s) * 1000 - score(s), risks: s.findings.filter((f, i) => f.sev === 'risk' && !(s.reviewed || {})[i]).length, value: (projectValue(s) || {}).sale || 0 }[k] ?? s.name);
     return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x > y ? 1 : x < y ? -1 : 0) * dir; });
   }
   /* =================================================================
@@ -351,19 +351,18 @@
         <div class="flex flex-wrap gap-1.5">${chips.join('')}</div><div class="flex-1"></div>
         <input data-role="mobile-search" type="search" value="${esc(f.q)}" placeholder="Search" class="field h-8 px-2.5 text-[13px] sm:hidden w-full" />
         <button class="btn btn-secondary btn-sm" data-action="export-directory">Export CSV</button></div>
-      <div class="overflow-x-auto"><table class="tbl w-full min-w-[1100px]">
-        <thead><tr>${th('name', 'Facility')}${th('intake', 'Needs action')}${th('sector', 'Type · size')}${th('kwh', 'Grid use')}<th>Overview</th>${th('risks', 'Risks')}${th('score', 'Ready for development')}</tr></thead>
-        <tbody>${list.length ? list.map(rowHTML).join('') : `<tr><td colspan="7" class="!py-12 text-center text-mute">No facilities match. <button class="link" data-action="clear-all-filters">Clear filters</button></td></tr>`}</tbody>
+      <div class="overflow-x-auto"><table class="tbl w-full min-w-[880px]">
+        <thead><tr>${th('name', 'Facility')}${th('intake', 'Next action')}${th('score', 'Ready for development')}${th('risks', 'Open risks')}${th('value', 'Est. value')}</tr></thead>
+        <tbody>${list.length ? list.map(rowHTML).join('') : `<tr><td colspan="5" class="!py-12 text-center text-mute">No facilities match. <button class="link" data-action="clear-all-filters">Clear filters</button></td></tr>`}</tbody>
       </table></div>`;
   }
   function overviewDots(s) {
     return `<div class="flex flex-wrap gap-x-3 gap-y-1">${EQ.AREAS.map((a) => { const x = areaStatus(s, a.key); return `<span class="tag ${EQ.STATUS[x.status].cls}" title="${esc(a.name)}: ${esc(x.status)} — ${esc(x.note)}">${esc(a.name.split(' ')[0])}</span>`; }).join('')}</div>`;
   }
   function intakeHTML(s) {
-    const cur = intakeIdx(s), a = nextAction(s);
-    return `<div class="tracker" role="list" aria-label="Intake progress, set by the data on file">${EQ.INTAKE.map((t, i) => `<div role="listitem" class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="n num">${t.n}${i < cur ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div><div class="l">${esc(t.label)}</div></div>`).join('')}</div>
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[12px] text-ink2">
-        ${reqOpen(s).length ? `<button class="btn btn-secondary btn-xs" data-action="next-steps">What to do next<span>→</span></button>` : ''}<span class="text-[11px] text-mute ml-auto">Progress follows the data on file.</span></div>`;
+    const cur = intakeIdx(s);
+    const check = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="completed"><path d="M20 6 9 17l-5-5"/></svg>';
+    return `<div class="tracker" role="list" aria-label="Intake progress, set by the data on file" title="Progress follows the data on file">${EQ.INTAKE.map((t, i) => `<div role="listitem" class="${i < cur ? 'done' : i === cur ? 'cur' : ''}"><div class="n num">${t.n}${i < cur ? check : ''}</div><div class="l">${esc(t.label)}</div></div>`).join('')}</div>`;
   }
   function actionCell(s) {
     const a = nextAction(s), st = EQ.INTAKE[intakeIdx(s)];
@@ -373,15 +372,13 @@
       <div class="text-[11.5px] text-mute mt-0.5">${st ? `<span class="num">${st.n}</span> ${esc(st.label)}` : s.stage === 'intake' ? '<span class="num">04</span> Site data collection completed' : `Delivery · ${esc(EQ.STAGES[s.stage].label)}`}</div>`;
   }
   function rowHTML(s) {
-    const sc = score(s), h = health(s), l = latestKwh(s), risks = s.findings.filter((f) => f.sev === 'risk').length;
+    const sc = score(s), h = health(s), risks = s.findings.filter((f, i) => f.sev === 'risk' && !(s.reviewed || {})[i]).length, v = projectValue(s);
     return `<tr data-action="open-site" data-id="${s.id}" data-row="${s.id}">
-      <td><div class="text-ink font-medium">${esc(s.name)}</div><div class="text-[12px] text-ink2">${esc(s.address)}, ${esc(s.city)} · APN ${esc(s.apn)}${s.apnCandidate ? ' (candidate)' : ''}</div><div class="text-[11.5px] text-mute">${esc(s.tenant)}</div></td>
-      <td class="min-w-[210px]">${actionCell(s)}</td>
-      <td><div>${esc(s.sector)}</div><div class="text-[11.5px] text-mute num">${fmt(s.floorArea)} sf · built ${s.yearBuilt || '—'}</div></td>
-      <td><div class="num">${l ? fmt(l.kwh / 1e6, 2) + ' GWh' : '—'}<div class="text-[11.5px] text-mute">${l ? l.year : ''}</div></div></td>
-      <td class="min-w-[220px]">${overviewDots(s)}</td>
+      <td class="min-w-[240px]"><div class="text-ink font-medium">${esc(s.name)}</div><div class="text-[12px] text-ink2">${esc(s.city)}, ${esc(s.state)} · ${esc(s.sector)}</div></td>
+      <td class="min-w-[240px]">${actionCell(s)}</td>
+      <td class="min-w-[170px]"><div class="flex items-baseline justify-between gap-3 mb-1.5"><span class="num text-[15px] text-ink">${sc}%</span>${tag(HEALTH[h].cls, HEALTH[h].label)}</div><div class="h-[4px] bg-line2"><div class="h-full bg-steel" style="width:${sc}%"></div></div></td>
       <td class="num ${risks ? 'text-alert' : 'text-mute'}">${risks}</td>
-      <td class="min-w-[180px]"><div class="flex items-baseline justify-between mb-1.5"><span class="num text-[15px] text-ink">${sc}%</span>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>${segbar(s)}</td>
+      <td class="num whitespace-nowrap">${v ? `<div class="text-ink">${kUSD(v.sale)}</div><div class="text-[11.5px] text-mute">${kUSD(v.savings)}/yr savings</div>` : '—'}</td>
     </tr>`;
   }
   /* ---------------------------------------------------------------- map */
@@ -669,8 +666,6 @@
         <aside class="xl:col-span-4 space-y-6">${panelFold('site-activity', 'Activity', `${s.activity.length} entries`)}</aside>
       </section>
 
-      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border-l border-t border-line bg-white" id="snapshot"></section>
-
       <section class="panel" id="site-timeline"></section>
 
       <div class="eyebrow pt-2">Reference</div>
@@ -710,6 +705,7 @@
     return { status: base, note, src };
   }
   function renderSnapshot(s) {
+    if (!$('#snapshot')) return;
     $('#snapshot').innerHTML = EQ.AREAS.map((a) => {
       const x = areaStatus(s, a.key), m = EQ.STATUS[x.status];
       return `<button class="text-left p-4 border-r border-b border-line hover:bg-paper flex flex-col gap-1.5 snap-${x.status}" data-action="area" data-area="${a.key}">
@@ -1027,21 +1023,16 @@
   }
   function renderScore(s) {
     const sc = score(s), h = health(s), g = gateChecks(s);
+    const req = s.dps.filter(isReq), done = req.filter((d) => dpStatus(d) === 'ok').length;
     $('#site-score').innerHTML = `
-      <div class="flex items-baseline justify-between"><div class="eyebrow">Ready for project development</div>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>
-      <div class="flex items-baseline gap-2 mt-2"><span class="display text-[54px] leading-none num">${sc}%</span><span class="text-ink2 text-[13px]">of required inputs</span>
-        <button class="link text-[12px] ml-auto" data-action="score-breakdown">Method</button></div>
-      <div class="text-[11.5px] text-mute mt-1">Required inputs only. Optional inputs don't count toward progress.</div>
-      <div class="mt-4 space-y-2.5">${sectionScores(s).filter((p) => p.max).map((p) => { const r = p.earned / p.max; const col = r === 1 ? 'var(--steel)' : r >= 0.7 ? '#b07a20' : 'var(--alert)';
-        return `<button class="sec-link group" data-action="scroll-section" data-p="${p.key}" title="Go to ${esc(p.name)}">
-          <div class="flex items-baseline gap-2 text-[13px]"><span class="text-ink underline decoration-line underline-offset-4 group-hover:decoration-ink">${p.name}</span><span class="ml-auto num text-ink2">${p.done}/${p.dps.length}</span><span class="text-mute group-hover:text-ink transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span></div>
-          <div class="h-[3px] bg-line2 mt-1.5"><div class="h-full" style="width:${r * 100}%;background:${col}"></div></div></button>`; }).join('')}
-        <div class="flex items-baseline justify-between text-[12px] text-mute pt-1"><span>Optional now (all sections)</span><span class="num">${sectionScores(s).reduce((a, p) => a + p.optDone, 0)}/${sectionScores(s).reduce((a, p) => a + p.opt.length, 0)} captured</span></div></div>
-      <div class="mt-5 pt-4 border-t border-line2">
-        ${g.next ? `<div class="text-[12px] text-mute">Next: ${esc(stageLabel(g.next))}</div>
-          <div class="text-[12.5px] text-ink mt-0.5">${g.checks.filter((c) => c.pass).length} of ${g.checks.length} gate checks met</div>
+      <div class="flex items-baseline justify-between gap-3"><div class="eyebrow">Ready for project development</div>${tag(HEALTH[h].cls, HEALTH[h].label)}</div>
+      <div class="flex items-baseline gap-3 mt-2"><span class="display text-[48px] leading-none num">${sc}%</span><span class="text-[13px] text-ink2">${done} of ${req.length} required inputs confirmed</span></div>
+      <div class="h-[4px] bg-line2 mt-3"><div class="h-full bg-steel" style="width:${sc}%"></div></div>
+      <button class="link text-[12px] mt-2" data-action="score-breakdown">How this is calculated</button>
+      <div class="mt-4 pt-4 border-t border-line2">
+        ${g.next ? `<div class="text-[12.5px] text-ink2">Next: <span class="text-ink">${esc(stageLabel(g.next))}</span> · <span class="num">${g.checks.filter((c) => c.pass).length}/${g.checks.length}</span> gate checks met</div>
           <button class="btn ${g.pass ? 'btn-primary' : 'btn-secondary'} w-full justify-between mt-3" data-action="open-gate">${g.pass ? 'Advance to ' + EQ.STAGES[g.next].label : 'Review gate checks'}<span>→</span></button>`
-        : `<div class="text-[12.5px] text-ink">Operating. ${verifiedCount(s)}/${relevant(s).length} site data points confirmed.</div>`}
+        : `<div class="text-[12.5px] text-ink">Operating.</div>`}
       </div>`;
   }
 
@@ -1051,17 +1042,16 @@
     return `<details class="fold-in border-t border-line2" data-fold="${key}" ${(S.folds || {})[key] ? 'open' : ''}><summary class="flex items-baseline gap-3 px-5 py-3 cursor-pointer select-none hover:bg-paper"><span class="chev"></span><span class="text-[13px] ${muted ? 'text-mute' : 'text-ink'}">${title}</span><span class="text-[11.5px] text-mute">${sub}</span></summary>${body}</details>`;
   }
   function renderMatrix(s) {
-    const sc = Object.fromEntries(sectionScores(s).map((p) => [p.key, p]));
-    const rank = (k) => { const p = sc[k]; return !p.dps.length ? 2 : p.done < p.dps.length ? 0 : 1; };
-    const order = EQ.SECTIONS.slice().sort((a, b) => rank(a.key) - rank(b.key));
-    $('#site-matrix').innerHTML = order.map((p) => `
-      <article class="panel scroll-mt-32" id="section-${p.key}">
-        <header class="panel-head" id="section-head-${p.key}"></header>
+    $('#site-matrix').innerHTML = `<div class="panel">
+      <div class="panel-head"><h2 class="h-section !text-[19px] flex-1">Site data</h2><span class="text-[12px] text-mute hidden sm:inline">Everything on record by topic. Open one for values, sources and calculators.</span></div>
+      ${EQ.SECTIONS.map((p) => `<details class="sec-fold" id="section-${p.key}" data-fold="sec-${p.key}" ${(S.folds || {})[`sec-${p.key}`] ? 'open' : ''}>
+        <summary class="sec-sum" id="section-head-${p.key}"></summary>
         <div id="section-body-${p.key}"></div>
         ${p.key === 'elec' ? fold('tiein', 'Tie-in check', 'Calculator: 120% rule, fault duty, GFPE', '<div id="tiein"></div>') : ''}
         ${p.key === 'load' ? fold('load', s.interval ? 'Load data, charts and peak-shaving model' : 'Load data and charts', s.shave ? `Modeled demand savings $${fmt(Math.round(s.shave.total / 100) * 100)}/yr` : 'Benchmarking, interval data, bill demand', '<div class="p-5" id="load-panel"></div>') : ''}
-      </article>`).join('') + `
-      <article class="panel scroll-mt-32" id="section-field"><header class="panel-head" id="section-head-field"></header><div id="section-body-field"></div></article>`;
+      </details>`).join('')}
+      <details class="sec-fold" id="section-field" data-fold="sec-field" ${(S.folds || {})['sec-field'] ? 'open' : ''}><summary class="sec-sum" id="section-head-field"></summary><div id="section-body-field"></div></details>
+    </div>`;
     EQ.SECTIONS.forEach((p) => renderSectionBody(s, p.key));
     renderFieldBody(s); renderTieIn(s);
   }
@@ -1069,7 +1059,7 @@
     const dps = s.dps.filter((d) => d.sec === 'field');
     const active = fieldActive(s);
     const done = dps.filter((d) => dpStatus(d) === 'ok').length;
-    $('#section-head-field').innerHTML = `<h3 class="h-section flex-1 !text-[19px]">${EQ.FIELD.name}</h3><span class="text-[12px] text-mute">${active ? `${done}/${dps.length}` : `From ${stageLabel(EQ.FIELD.from)}`}</span>`;
+    $('#section-head-field').innerHTML = `<span class="chev"></span><span class="text-[15px] ${active ? 'text-ink' : 'text-mute'}">${EQ.FIELD.name}</span><span class="ml-auto text-[12px] text-mute">${active ? `${done}/${dps.length}` : `From ${esc(stageLabel(EQ.FIELD.from))}`}</span>`;
     $('#section-body-field').innerHTML = active ? dps.map((d) => dpRow(s, d)).join('') : `<div class="px-5 py-4 text-[12.5px] text-mute">Delivery and rigging, pad, conduit route, tie-in shutdown, site access, working space, inspections and commissioning tests are captured once the project reaches utility interconnection.</div>`;
   }
   function renderTieIn(s) {
@@ -1100,13 +1090,12 @@
   function renderSectionBody(s, key) {
     const p = sectionScores(s).find((x) => x.key === key);
     const open = p.dps.length - p.done;
-    $(`#section-head-${key}`).innerHTML = `
-      <h3 class="h-section flex-1 !text-[19px]">${p.name}</h3>
-      ${p.dps.length ? `<span class="text-[12px] ${open ? 'text-ochre' : 'text-steel'}">${open ? `${open} required open` : 'Required complete'}</span>
-      <span class="text-[12px] text-mute num">${p.done}/${p.dps.length} required</span>` : '<span class="text-[12px] text-mute">Nothing required yet</span>'}`;
-    const act = p.dps.filter((d) => dpStatus(d) !== 'ok'), done = p.dps.filter((d) => dpStatus(d) === 'ok');
-    $(`#section-body-${key}`).innerHTML = (p.dps.length ? (act.length ? `<div class="px-5 pt-3 pb-1 eyebrow">Next steps · required for ${EQ.REQUIRED_FOR}</div>${act.map((d) => dpRow(s, d)).join('')}` : `<div class="px-5 py-3 text-[13px] text-steel">All required inputs in this section are confirmed.</div>`) : '')
-      + (done.length ? fold(`done-${key}`, `Confirmed · ${done.length}`, 'Required inputs already in', done.map((d) => dpRow(s, d)).join('')) : '')
+    const areas = { elec: ['electrical'], load: ['load'], site: ['site'], perm: ['permits', 'utility'] }[key] || [];
+    $(`#section-head-${key}`).innerHTML = `<span class="chev"></span><span class="text-[15px] text-ink">${p.name}</span>
+      <span class="flex flex-wrap gap-1.5">${areas.map((a) => { const x = areaStatus(s, a), m = EQ.STATUS[x.status]; return `<button class="area-chip" data-action="area" data-area="${a}" title="${esc(x.note)}">${tag(m.cls, `${EQ.AREAS.find((z) => z.key === a).name.split(' ')[0]}: ${m.label}`)}</button>`; }).join('')}</span>
+      <span class="ml-auto flex items-baseline gap-3 text-[12px]">${p.dps.length ? `<span class="num ${open ? 'text-ink2' : 'text-steel'}">${p.done}/${p.dps.length} required</span>${open ? `<button class="link" data-action="goto-next" data-sec="${key}">${open} open in Next steps</button>` : ''}` : '<span class="text-mute">Nothing required yet</span>'}<span class="text-mute num">${p.optDone}/${p.opt.length} optional</span></span>`;
+    const ordered = p.dps.slice().sort((a, b) => (dpStatus(a) === 'ok') - (dpStatus(b) === 'ok'));
+    $(`#section-body-${key}`).innerHTML = (ordered.length ? ordered.map((d) => dpRow(s, d)).join('') : '')
       + (p.opt.length ? fold(`opt-${key}`, `Optional now · ${p.optDone}/${p.opt.length} captured`, "Helpful later; doesn't count toward progress", `<div class="opt-block">${p.opt.map((d) => dpRow(s, d)).join('')}</div>`, true) : '');
   }
   /* What to do about an open data point: the kind of action, concrete steps, and one-click buttons. */
@@ -1279,25 +1268,28 @@
     const rel = relevant(s);
     const openSt = (d) => ['missing', 'requested'].includes(dpStatus(d));
     const fmItems = rel.filter((d) => isReq(d) && d.owner === 'fm' && openSt(d));
-    const eqItems = rel.filter((d) => isReq(d) && d.owner === 'eqore' && openSt(d));
     const utItems = rel.filter((d) => isReq(d) && d.owner === 'utility' && openSt(d));
+    const eqItems = rel.filter((d) => isReq(d) && d.owner === 'eqore' && openSt(d));
     const review = rel.filter((d) => isReq(d) && dpStatus(d) === 'review');
     const later = rel.filter((d) => !isReq(d) && d.sec !== 'field' && dpStatus(d) !== 'ok');
-    const row = (d, ctl) => `<li class="req-row px-5 py-2.5 border-t border-line2 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}">
-        ${badgeCol(d)}
-        <div class="min-w-0"><div class="text-[13px] text-ink leading-snug">${esc(d.label)}</div><div class="text-[12px] text-ink2 leading-snug">${esc(dpStatus(d) === 'review' ? d.value : d.ask)}</div></div>
-        <div data-stop class="shrink-0 pt-0.5 flex items-center gap-1.5"><button class="btn btn-secondary btn-xs" data-action="what-to-do" data-dp="${d.key}">What to do</button>${ctl}</div></li>`;
-    const group = (title, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-2 eyebrow">${title} <span class="text-mute num">${items.length}</span></div><ul>${items.map((d) => row(d, ctl(d))).join('')}</ul>` : '';
+    const total = fmItems.length + utItems.length + eqItems.length + review.length;
+    // One row = status (left), what is needed (middle), one action (right). The row itself opens "What to do".
+    const row = (d, ctl) => `<li class="req-row px-5 py-2.5 border-t border-line2 cursor-pointer hover:bg-paper" data-action="what-to-do" data-dp="${d.key}" data-req-row="${d.key}">
+        <div class="badge-col">${statusTag(d)}<span class="text-[11px] text-mute leading-tight">${esc(secName(d.sec).split(' ')[0])}</span></div>
+        <div class="min-w-0"><div class="text-[13.5px] text-ink leading-snug">${esc(d.label)}</div><div class="text-[12px] text-ink2 leading-snug truncate">${esc(dpStatus(d) === 'review' ? d.value : d.ask)}</div></div>
+        <div data-stop class="shrink-0 flex items-center gap-2">${ctl(d)}</div></li>`;
+    const todo = (d) => `<button class="btn btn-secondary btn-xs" data-action="what-to-do" data-dp="${d.key}">What to do</button>`;
+    const group = (title, sub, items, ctl) => items.length ? `<div class="px-5 pt-4 pb-1.5 flex items-baseline gap-2"><span class="eyebrow">${title}</span><span class="text-[11.5px] text-mute">${sub}</span><span class="ml-auto text-[11.5px] text-mute num">${items.length}</span></div><ul>${items.map((d) => row(d, ctl)).join('')}</ul>` : '';
+    const g = gateChecks(s);
     $('#site-requests').innerHTML = `
-      <div class="panel-head"><h2 class="h-section !text-[19px] flex-1">Required open items</h2><span class="text-[12px] text-mute num">${fmItems.length + eqItems.length + utItems.length + review.length} open</span>${fmItems.length + eqItems.length + utItems.length + review.length ? '<button class="btn btn-primary btn-sm" data-action="next-steps">What to do next<span>→</span></button>' : ''}</div>
-      ${group('From the facility', fmItems, (d) => `<label class="btn btn-ghost btn-xs cursor-pointer">Upload<input type="file" class="hidden" data-upload="${d.key}" /></label>${dpStatus(d) === 'missing' ? `<input type="checkbox" class="w-4 h-4 accent-[#06162b]" data-rfi-pick="${d.key}" checked aria-label="Include in text request" />` : ''}`)}
-      ${fmItems.some((d) => dpStatus(d) === 'missing') ? `<div class="px-5 py-3"><button class="btn btn-primary w-full justify-between" data-action="open-rfi">Text the facility for checked items<span>→</span></button></div>` : ''}
-      ${group('From the utility (EQORE requests)', utItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}
-      ${group('EQORE', eqItems, (d) => `<button class="btn btn-ghost btn-xs" data-action="resolve-dp" data-dp="${d.key}">Enter</button>`)}
-      ${group('Needs engineer confirmation', review, (d) => `<button class="toggle" role="switch" aria-checked="false" aria-label="Confirm ${esc(d.label)}" data-action="toggle-verify" data-dp="${d.key}"></button>`)}
-      ${!fmItems.length && !eqItems.length && !utItems.length && !review.length ? `<div class="px-5 py-6 text-[13px] text-steel">All required inputs are in and confirmed.</div>` : ''}
-      ${later.length ? `<details class="border-t border-line2 opacity-70"><summary class="px-5 py-3 text-[12px] text-mute cursor-pointer">Optional now · ${later.length} for later steps</summary>
-        <ul>${later.map((d) => `<li class="px-5 py-2 border-t border-line2 flex items-baseline gap-3 cursor-pointer hover:bg-paper" data-action="open-dp" data-dp="${d.key}"><span class="text-[12.5px] text-ink2 flex-1">${esc(d.label)}</span><span class="text-[11px] text-mute">${esc(EQ.LATER[d.key] || '')}</span></li>`).join('')}</ul></details>` : ''}`;
+      <div class="panel-head"><h2 class="h-section !text-[19px] flex-1">Next steps</h2><span class="text-[12px] text-mute num">${total} required open</span>${total ? '<button class="btn btn-primary btn-sm" data-action="next-steps">What to do next<span>→</span></button>' : ''}</div>
+      ${group('Ask the facility', 'photos, bills, interval data', fmItems, (d) => `${dpStatus(d) === 'missing' ? `<input type="checkbox" class="w-4 h-4 accent-[#06162b]" data-rfi-pick="${d.key}" checked aria-label="Include ${esc(d.label)} in the text request" />` : ''}${todo(d)}`)}
+      ${fmItems.some((d) => dpStatus(d) === 'missing') ? `<div class="px-5 py-3 border-t border-line2"><button class="btn btn-primary w-full sm:w-auto justify-between gap-6" data-action="open-rfi">Text the facility for the checked items<span>→</span></button></div>` : ''}
+      ${group('Request from the utility', 'in writing', utItems, todo)}
+      ${group('EQORE to do', 'calls, lookups, applications', eqItems, todo)}
+      ${group('Confirm what we have', 'check the source, then confirm', review, (d) => `<button class="toggle" role="switch" aria-checked="false" aria-label="Confirm ${esc(d.label)}" data-action="toggle-verify" data-dp="${d.key}"></button>${todo(d)}`)}
+      ${!total ? `<div class="px-5 py-6 flex flex-wrap items-center gap-4"><span class="text-[13.5px] text-steel">All required inputs are in and confirmed.</span>${g.next ? `<button class="btn btn-primary btn-sm" data-action="open-gate">${g.pass ? 'Advance to ' + esc(EQ.STAGES[g.next].label) : 'Review gate checks'}<span>→</span></button>` : ''}</div>` : ''}
+      ${later.length ? fold('later', `Later · ${later.length} optional`, "Needed at design, permitting or interconnection; doesn't block this step", `<ul class="opacity-80">${later.map((d) => `<li class="req-row px-5 py-2 border-t border-line2 cursor-pointer hover:bg-paper" data-action="what-to-do" data-dp="${d.key}"><div class="badge-col">${tag('muted', EQ.LATER[d.key] || 'Later')}</div><div class="text-[12.5px] text-ink2">${esc(d.label)}</div><div></div></li>`).join('')}</ul>`, true) : ''}`;
   }
   function openRfiModal(s, onlyKey) {
     const gaps = relevant(s).filter((d) => d.owner === 'fm' && dpStatus(d) === 'missing' && (isReq(d) || d.key === onlyKey));
@@ -1659,7 +1651,7 @@
     const el = e.target.closest('[data-action]'); if (!el) return;
     const stopper = e.target.closest('[data-stop]');
     const a = el.dataset.action;
-    if (stopper && !stopper.contains(el) && a === 'open-dp') return;
+    if (stopper && !stopper.contains(el) && ['open-dp', 'what-to-do', 'open-site'].includes(a)) return;
     if (e.target.closest('select')) return;
     const s = currentSite();
     switch (a) {
@@ -1725,7 +1717,7 @@
       case 'open-gate': if (s) openGateModal(s); break;
       case 'source': if (s) { e.stopPropagation(); openSource(s, el.dataset.src, el.dataset.title, el.dataset.url); } break;
       case 'goto-permits': closeModal(); { const t = $('#site-permits'); if (t) t.scrollIntoView({ behavior: 'smooth' }); } break;
-      case 'area': if (s) openArea(s, el.dataset.area); break;
+      case 'area': if (s) { e.preventDefault(); e.stopPropagation(); openArea(s, el.dataset.area); } break;
       case 'save-area': if (s) { const k = el.dataset.area, v = $('#ov-status').value; s.overrides = s.overrides || {}; if (v) s.overrides[k] = { status: v, note: $('#ov-note').value.trim(), by: EQ.TEAM[EQ.CURRENT_USER].name }; else delete s.overrides[k]; log(s, `Assessment set for ${EQ.AREAS.find((a) => a.key === k).name}: ${v ? EQ.STATUS[v].label : 'records'}`); closeModal(); refreshSite(s); } break;
       case 'pfilter': S.permitFilter = el.dataset.f; if (s) renderPermits(s); break;
       case 'refresh-permits': if (s) refreshPermits(s); break;
@@ -1741,7 +1733,8 @@
       } break;
       case 'advance-stage': if (s) advanceStage(s); break;
       case 'score-breakdown': if (s) openScoreBreakdown(s); break;
-      case 'scroll-section': { const t = $(`#section-${el.dataset.p}`); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); break; }
+      case 'scroll-section': { const t = $(`#section-${el.dataset.p}`); if (t) { t.open = true; t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } break; }
+      case 'goto-next': if (s) { e.preventDefault(); e.stopPropagation(); const keys = s.dps.filter((d) => d.sec === el.dataset.sec && isReq(d) && dpStatus(d) !== 'ok').map((d) => d.key); $('#site-requests').scrollIntoView({ behavior: 'smooth', block: 'start' }); keys.forEach((k) => { const r = $(`[data-req-row="${k}"]`); if (r) { r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); } }); } break;
       case 'chart-tab': S.chart.tab = el.dataset.tab; if (s) updateLoadChart(s); break;
       case 'chart-day': S.chart.day = el.dataset.day; if (s) updateLoadChart(s); break;
       case 'open-satellite': if (s) openSatelliteModal(s); break;
